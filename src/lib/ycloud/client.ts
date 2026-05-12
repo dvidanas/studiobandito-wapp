@@ -29,12 +29,14 @@ export async function getPhoneNumberInfo(): Promise<{
 }> {
   const apiKey = process.env.YCLOUD_API_KEY!;
   const phone = process.env.YCLOUD_PHONE_NUMBER!;
-  // Verificamos que el API key sea válido. Si responde 200, la conexión es correcta.
-  // No buscamos el número en la lista porque puede estar bajo una WABA y no aparecer aquí.
-  const res = await fetch(`${BASE}/whatsapp/phone-numbers?page=1&limit=1`, {
+  // Usamos /contacts como health-check: cualquier respuesta que no sea 401/403
+  // indica que el API key es válido.
+  const res = await fetch(`${BASE}/contacts?page=1&limit=1`, {
     headers: { "X-API-Key": apiKey },
   });
-  if (!res.ok) throw new Error(`YCloud ${res.status}: ${await res.text()}`);
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`YCloud ${res.status}: API key inválido. ${await res.text()}`);
+  }
   return {
     display_phone_number: phone,
     status: "active",
