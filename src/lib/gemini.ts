@@ -1,10 +1,4 @@
-import OpenAI from "openai";
 import { SYSTEM_PROMPT } from "./system-prompt";
-
-const client = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY ?? "",
-  baseURL: "https://generativelanguage.googleapis.com/v1/openai/",
-});
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -15,13 +9,31 @@ export async function getChatCompletion(
   history: ChatMessage[]
 ): Promise<string> {
   const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+  const apiKey = process.env.GEMINI_API_KEY!;
   console.log("[llm] usando modelo:", model);
+
   const start = Date.now();
-  const response = await client.chat.completions.create({
-    model,
-    messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history],
-    max_tokens: 1000,
-  });
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: history.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Gemini ${res.status}: ${body}`);
+  }
+
+  const json = await res.json();
   console.log(`[llm] Gemini respondió en ${Date.now() - start}ms`);
-  return response.choices[0]?.message?.content ?? "";
+  return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
