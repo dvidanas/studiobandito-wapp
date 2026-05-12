@@ -1,0 +1,27 @@
+# dependencias
+node_modules/
+
+# build
+.next/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# base de datos local
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+
+# Google Drive
+desktop.ini
