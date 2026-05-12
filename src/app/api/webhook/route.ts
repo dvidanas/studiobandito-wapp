@@ -5,17 +5,15 @@ import { processWebhookPayload } from "@/lib/ycloud/handler";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  console.log("[webhook] SKIP_CHECK:", process.env.SKIP_SIGNATURE_CHECK);
+
   const raw = await req.text();
 
-  if (process.env.SKIP_SIGNATURE_CHECK === "true") {
-    console.log("[webhook] firma omitida (SKIP_SIGNATURE_CHECK=true)");
-  } else {
-    // YCloud puede enviar la firma en dos headers distintos
+  if (process.env.SKIP_SIGNATURE_CHECK !== "true") {
     const sig =
       req.headers.get("x-ycloud-signature-256") ??
       req.headers.get("x-ycloud-signature");
 
-    // Usar YCLOUD_WEBHOOK_SECRET si existe, si no el API key como fallback
     const secret =
       process.env.YCLOUD_WEBHOOK_SECRET ?? process.env.YCLOUD_API_KEY!;
 
