@@ -14,16 +14,19 @@ export async function getChatCompletion(
 
   const start = Date.now();
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: history.map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        })),
+        contents: [
+          { role: "user", parts: [{ text: "INSTRUCCIONES DEL SISTEMA:\n" + SYSTEM_PROMPT }] },
+          { role: "model", parts: [{ text: "Entendido." }] },
+          ...history.map((m) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          })),
+        ],
       }),
     }
   );
