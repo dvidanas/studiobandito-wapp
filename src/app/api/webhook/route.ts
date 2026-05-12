@@ -6,14 +6,26 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const raw = await req.text();
-  const sig = req.headers.get("x-ycloud-signature-256");
-  const skip =
-    process.env.SKIP_SIGNATURE_CHECK === "true" &&
-    process.env.NODE_ENV !== "production";
 
-  if (!skip) {
-    const ok = verifySignature(raw, sig, process.env.YCLOUD_API_KEY!);
-    if (!ok) return new NextResponse("invalid signature", { status: 401 });
+  if (process.env.SKIP_SIGNATURE_CHECK === "true") {
+    console.log("[webhook] firma omitida (SKIP_SIGNATURE_CHECK=true)");
+  } else {
+    // YCloud puede enviar la firma en dos headers distintos
+    const sig =
+      req.headers.get("x-ycloud-signature-256") ??
+      req.headers.get("x-ycloud-signature");
+
+    // Usar YCLOUD_WEBHOOK_SECRET si existe, si no el API key como fallback
+    const secret =
+      process.env.YCLOUD_WEBHOOK_SECRET ?? process.env.YCLOUD_API_KEY!;
+
+    console.log("[webhook] header firma:", sig?.slice(0, 20) ?? "ausente");
+
+    const ok = verifySignature(raw, sig, secret);
+    if (!ok) {
+      console.error("[webhook] firma inválida. Header recibido:", sig);
+      return new NextResponse("invalid signature", { status: 401 });
+    }
   }
 
   let payload: unknown;
