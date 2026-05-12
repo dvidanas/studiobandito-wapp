@@ -14,9 +14,11 @@ export interface ChatMessage {
 export async function getChatCompletion(
   history: ChatMessage[]
 ): Promise<string> {
+  const model = process.env.GEMINI_MODEL ?? "gemini-1.5-flash";
+  console.log("[llm] usando modelo:", model);
   const start = Date.now();
   const response = await client.chat.completions.create({
-    model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+    model,
     messages: [{ role: "system", content: SYSTEM_PROMPT }, ...history],
     max_tokens: 1000,
   });
