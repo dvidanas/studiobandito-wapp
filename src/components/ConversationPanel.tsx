@@ -147,7 +147,7 @@ export function ConversationPanel({ conversation, onModeChange, onDelete }: Prop
       </div>
 
       {/* Mensajes */}
-      <div className="flex-1 overflow-y-auto px-[5%] sm:px-[10%] py-4">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 md:px-16 lg:px-24 py-6">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <span className="bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-text-sec)] text-xs px-4 py-1.5 rounded-lg shadow-sm">

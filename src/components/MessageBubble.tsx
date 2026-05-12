@@ -28,7 +28,7 @@ export function MessageBubble({ message }: Props) {
       className={`flex ${isIncoming ? "justify-start" : "justify-end"} mb-1.5`}
     >
       <div
-        className={`relative max-w-[85%] sm:max-w-[70%] px-2.5 pt-1.5 pb-6 text-[14.2px] leading-5 shadow-sm ${
+        className={`relative max-w-[85%] sm:max-w-[70%] px-2.5 pt-1.5 pb-2 text-[14.2px] leading-5 shadow-sm ${
           isIncoming
             ? "bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-text-main)] rounded-lg rounded-tl-none"
             : "bg-[var(--color-wa-bubble-out)] text-[var(--color-wa-text-main)] rounded-lg rounded-tr-none"
@@ -41,7 +41,10 @@ export function MessageBubble({ message }: Props) {
             {isAssistant ? "IA" : "Agente"}
           </span>
         )}
-        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+        <p className="whitespace-pre-wrap break-words">
+          {message.content}
+          <span className="inline-block w-12 h-1 ml-2"></span>
+        </p>
         <div
           className="absolute bottom-1 right-2 flex items-center gap-1"
         >
