@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { ConnectionGate } from "@/components/ConnectionGate";
-import { DashboardHeader } from "@/components/DashboardHeader";
+import { Sidebar } from "@/components/Sidebar";
 import { ConversationList } from "@/components/ConversationList";
 import { ConversationPanel } from "@/components/ConversationPanel";
 
@@ -52,69 +52,71 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <DashboardHeader
-        initialStatus={{
-          status: connectionStatus.status as "connected" | "error" | "missing_config" | "loading",
-          phone: connectionStatus.phone,
-          quality: connectionStatus.quality,
-          message: connectionStatus.message,
-        }}
-      />
+    <div className="flex h-screen bg-[var(--color-wa-bg-main)]">
+      {/* 1. Columna izquierda angosta */}
+      <Sidebar newLeadsCount={conversations.filter(c => c.has_lead === 1 && c.mode === "AI").length} />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar — lista de conversaciones */}
-        <aside className="w-80 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Conversaciones
-            </h2>
+      {/* 2. Columna central */}
+      <aside className="w-[340px] flex-shrink-0 bg-[var(--color-wa-panel-l)] border-r border-[var(--color-wa-sep)] flex flex-col">
+        {/* Pequeño header superior con conexión */}
+        <div className="px-4 py-3 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--color-wa-text-main)]">Chats</h2>
+            {connectionStatus.phone && (
+              <p className="text-xs text-[var(--color-wa-text-sec)]">+{connectionStatus.phone}</p>
+            )}
           </div>
-          <div className="flex-1 overflow-y-auto">
-            <ConversationList
-              conversations={conversations}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-            />
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${connectionStatus.status === 'connected' ? 'bg-[var(--color-wa-green)]' : 'bg-red-500'}`} />
           </div>
-        </aside>
+        </div>
 
-        {/* Panel principal */}
-        <main className="flex-1 overflow-hidden">
-          {selectedConversation ? (
-            <ConversationPanel
-              key={selectedConversation.id}
-              conversation={selectedConversation}
-              onModeChange={handleModeChange}
-              onDelete={handleDelete}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center px-8">
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <svg
-                  className="w-8 h-8 text-gray-300"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"
-                  />
-                </svg>
-              </div>
-              <p className="text-sm font-medium text-gray-500">
-                Seleccioná una conversación
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Los chats aparecen cuando alguien escribe al número de WhatsApp
-              </p>
+        {/* Buscador ficticio estilo WhatsApp */}
+        <div className="p-2 border-b border-[var(--color-wa-sep)]">
+          <div className="bg-[var(--color-wa-bg-main)] rounded-lg px-3 py-1.5 flex items-center gap-3">
+            <svg className="w-5 h-5 text-[var(--color-wa-text-sec)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input type="text" placeholder="Buscar o iniciar un nuevo chat" className="bg-transparent border-none outline-none text-sm w-full text-[var(--color-wa-text-main)] placeholder-[var(--color-wa-text-sec)]" />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <ConversationList
+            conversations={conversations}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+        </div>
+      </aside>
+
+      {/* 3. Columna derecha */}
+      <main className="flex-1 bg-[var(--color-wa-panel-r)] flex flex-col">
+        {selectedConversation ? (
+          <ConversationPanel
+            key={selectedConversation.id}
+            conversation={selectedConversation}
+            onModeChange={handleModeChange}
+            onDelete={handleDelete}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center px-8 border-b-[6px] border-[var(--color-wa-green)]">
+            <div className="w-[320px] mb-8">
+              {/* WhatsApp like default graphic */}
+              <svg viewBox="0 0 100 100" className="w-full text-[var(--color-wa-text-sec)] opacity-20">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" />
+                <path d="M50 25v25l15 15" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+              </svg>
             </div>
-          )}
-        </main>
-      </div>
+            <h1 className="text-3xl font-light text-[var(--color-wa-text-main)] mb-4">
+              Feer WhatsApp Agent
+            </h1>
+            <p className="text-sm text-[var(--color-wa-text-sec)] max-w-md">
+              Seleccioná un chat para ver los mensajes. El bot en modo IA responderá automáticamente a las consultas y registrará leads.
+            </p>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

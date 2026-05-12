@@ -1,1 +1,55 @@
 @import "tailwindcss";
+
+@theme {
+  --color-wa-bg-main: var(--bg-main);
+  --color-wa-panel-l: var(--bg-panel-l);
+  --color-wa-panel-r: var(--bg-panel-r);
+  --color-wa-bubble-in: var(--bg-bubble-in);
+  --color-wa-bubble-out: var(--bg-bubble-out);
+  --color-wa-input: var(--bg-input);
+  --color-wa-header: var(--bg-header);
+  --color-wa-text-main: var(--text-main);
+  --color-wa-text-sec: var(--text-sec);
+  --color-wa-green: var(--wa-green);
+  --color-wa-green-dark: var(--wa-green-d);
+  --color-wa-sep: var(--color-sep);
+  --color-wa-hover: var(--bg-hover);
+}
+
+:root {
+  --bg-main: #F0F2F5;
+  --bg-panel-l: #FFFFFF;
+  --bg-panel-r: #EFEAE2;
+  --bg-bubble-in: #FFFFFF;
+  --bg-bubble-out: #D9FDD3;
+  --bg-input: #FFFFFF;
+  --bg-header: #F0F2F5;
+  --text-main: #111B21;
+  --text-sec: #667781;
+  --wa-green: #00A884;
+  --wa-green-d: #008069;
+  --color-sep: #E9EDEF;
+  --bg-hover: #F5F6F6;
+}
+
+.dark {
+  --bg-main: #111B21;
+  --bg-panel-l: #111B21;
+  --bg-panel-r: #0B141A;
+  --bg-bubble-in: #202C33;
+  --bg-bubble-out: #005C4B;
+  --bg-input: #2A3942;
+  --bg-header: #202C33;
+  --text-main: #E9EDEF;
+  --text-sec: #8696A0;
+  --wa-green: #00A884;
+  --wa-green-d: #005C4B;
+  --color-sep: #2A3942;
+  --bg-hover: #2A3942;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.2s, color 0.2s;
+}

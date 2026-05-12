@@ -32,38 +32,26 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[var(--color-wa-bg-main)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="bg-white rounded-2xl shadow-lg px-8 py-10">
+        <div className="bg-[var(--color-wa-panel-l)] rounded-xl shadow-lg border border-[var(--color-wa-sep)] px-8 py-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 mb-4">
-              <svg
-                className="w-6 h-6 text-emerald-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z"
-                />
-              </svg>
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--color-wa-green)] mb-4">
+              <span className="text-white font-bold text-xl">F</span>
             </div>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-[var(--color-wa-text-main)]">
               {clientConfig.businessName}
             </h1>
-            <p className="text-sm text-gray-500 mt-1">Panel de WhatsApp</p>
+            <p className="text-sm text-[var(--color-wa-text-sec)] mt-1">Panel de WhatsApp</p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-[var(--color-wa-text-main)] mb-1.5"
               >
                 Usuario
               </label>
@@ -73,7 +61,7 @@ function LoginForm() {
                 type="text"
                 autoComplete="username"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-wa-green)] focus:border-transparent text-[var(--color-wa-text-main)] placeholder-[var(--color-wa-text-sec)]"
                 placeholder="admin"
               />
             </div>
@@ -81,7 +69,7 @@ function LoginForm() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-[var(--color-wa-text-main)] mb-1.5"
               >
                 Contraseña
               </label>
@@ -91,21 +79,21 @@ function LoginForm() {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-wa-green)] focus:border-transparent text-[var(--color-wa-text-main)] placeholder-[var(--color-wa-text-sec)]"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                <p className="text-sm text-red-700">{error}</p>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-center">
+                <p className="text-sm text-red-500">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
+              className="w-full mt-2 py-3 px-4 bg-[var(--color-wa-green)] hover:bg-[var(--color-wa-green-dark)] disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
             >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
@@ -118,7 +106,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-100" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[var(--color-wa-bg-main)]" />}>
       <LoginForm />
     </Suspense>
   );

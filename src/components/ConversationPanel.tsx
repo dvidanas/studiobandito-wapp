@@ -110,22 +110,24 @@ export function ConversationPanel({ conversation, onModeChange, onDelete }: Prop
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[var(--color-wa-panel-r)]">
       {/* Header del panel */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white flex-shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0">
+      <div className="flex items-center justify-between px-5 py-2.5 bg-[var(--color-wa-header)] flex-shrink-0 border-b border-[var(--color-wa-sep)]">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-[var(--color-wa-sep)] flex items-center justify-center text-sm font-semibold text-[var(--color-wa-text-sec)] flex-shrink-0">
             {(conversation.name ?? conversation.phone).slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">
+            <p className="text-base font-medium text-[var(--color-wa-text-main)] truncate">
               {conversation.name ?? `+${conversation.phone}`}
             </p>
-            <p className="text-xs text-gray-400">+{conversation.phone}</p>
+            <p className="text-xs text-[var(--color-wa-text-sec)] truncate">
+              +{conversation.phone}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-4 flex-shrink-0">
           <ModeToggle
             conversationId={conversation.id}
             mode={mode}
@@ -136,7 +138,7 @@ export function ConversationPanel({ conversation, onModeChange, onDelete }: Prop
             className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
               confirmDelete
                 ? "bg-red-600 text-white hover:bg-red-700"
-                : "text-gray-400 hover:text-red-600 hover:bg-red-50"
+                : "text-[var(--color-wa-text-sec)] hover:text-red-500 hover:bg-[var(--color-wa-hover)]"
             }`}
           >
             {confirmDelete ? "¿Confirmar?" : "Borrar"}
@@ -145,10 +147,12 @@ export function ConversationPanel({ conversation, onModeChange, onDelete }: Prop
       </div>
 
       {/* Mensajes */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto px-[5%] sm:px-[10%] py-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-gray-400">Sin mensajes</p>
+            <span className="bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-text-sec)] text-xs px-4 py-1.5 rounded-lg shadow-sm">
+              Envía un mensaje para iniciar el chat
+            </span>
           </div>
         ) : (
           messages.map((m) => <MessageBubble key={m.id} message={m} />)
@@ -158,27 +162,27 @@ export function ConversationPanel({ conversation, onModeChange, onDelete }: Prop
 
       {/* Error 24h */}
       {sendError?.is24h && (
-        <div className="mx-4 mb-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-          <p className="text-sm font-semibold text-red-700">
+        <div className="mx-[5%] sm:mx-[10%] mb-2 bg-red-900/10 border border-red-500/20 rounded-lg px-4 py-3">
+          <p className="text-sm font-semibold text-red-500">
             Fuera de la ventana de 24 h
           </p>
-          <p className="text-xs text-red-600 mt-0.5">
+          <p className="text-xs text-red-400 mt-0.5">
             El contacto debe escribirte primero para reabrir la ventana de conversación.
           </p>
         </div>
       )}
       {sendError && !sendError.is24h && (
-        <div className="mx-4 mb-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          <p className="text-xs text-red-700">{sendError.message}</p>
+        <div className="mx-[5%] sm:mx-[10%] mb-2 bg-red-900/10 border border-red-500/20 rounded-lg px-3 py-2">
+          <p className="text-xs text-red-500">{sendError.message}</p>
         </div>
       )}
 
       {/* Input */}
-      <div className="px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+      <div className="px-4 py-3 bg-[var(--color-wa-header)] flex-shrink-0 flex gap-3 items-end">
         {mode === "AI" ? (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 rounded-xl">
+          <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-wa-input)] rounded-lg shadow-sm border border-[var(--color-wa-sep)]">
             <svg
-              className="w-4 h-4 text-emerald-500 flex-shrink-0"
+              className="w-5 h-5 text-[var(--color-wa-green)] flex-shrink-0"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -190,26 +194,39 @@ export function ConversationPanel({ conversation, onModeChange, onDelete }: Prop
                 d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15M14.25 3.104c.251.023.501.05.75.082M19.8 15l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.607L5 14.5m14.8.5l1.196 4.786A1.875 1.875 0 0119.128 21H4.872a1.875 1.875 0 01-1.868-1.714L4.2 14.5"
               />
             </svg>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-[var(--color-wa-text-sec)]">
               Modo IA activo — el bot responde automáticamente
             </span>
           </div>
         ) : (
-          <div className="flex gap-2">
-            <input
+          <div className="flex-1 flex gap-2">
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Escribir mensaje..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Escribe un mensaje"
               disabled={sending}
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50"
+              rows={1}
+              className="flex-1 px-4 py-2.5 bg-[var(--color-wa-input)] text-[var(--color-wa-text-main)] rounded-lg text-sm focus:outline-none placeholder-[var(--color-wa-text-sec)] disabled:opacity-50 resize-none max-h-32"
+              style={{ minHeight: "44px" }}
             />
             <button
               onClick={handleSend}
               disabled={sending || !input.trim()}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors"
+              className="w-11 h-11 flex-shrink-0 rounded-full bg-[var(--color-wa-green)] hover:bg-[var(--color-wa-green-dark)] flex items-center justify-center disabled:opacity-50 transition-colors shadow-sm text-white"
             >
-              {sending ? "..." : "Enviar"}
+              {sending ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5 ml-1" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              )}
             </button>
           </div>
         )}

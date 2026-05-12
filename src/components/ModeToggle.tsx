@@ -22,14 +22,12 @@ export function ModeToggle({ conversationId, mode, onChange }: Props) {
       onClick={toggle}
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
         mode === "AI"
-          ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-          : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+          ? "bg-[var(--color-wa-green)] text-white hover:bg-[var(--color-wa-green-dark)]"
+          : "bg-amber-500 text-white hover:bg-amber-600"
       }`}
     >
       <span
-        className={`w-1.5 h-1.5 rounded-full ${
-          mode === "AI" ? "bg-emerald-500" : "bg-amber-500"
-        }`}
+        className={`w-1.5 h-1.5 rounded-full bg-white`}
       />
       {mode === "AI" ? "IA" : "HUMANO"}
     </button>
