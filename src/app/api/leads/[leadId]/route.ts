@@ -1,7 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateLead, deleteLead } from "@/lib/db";
+import {
+  getLeadById,
+  getConversationById,
+  getRecentHistory,
+  updateLead,
+  deleteLead,
+} from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ leadId: string }> }
+) {
+  const { leadId } = await params;
+  const id = parseInt(leadId, 10);
+  if (isNaN(id)) return new NextResponse("bad id", { status: 400 });
+
+  const lead = getLeadById(id);
+  if (!lead) return new NextResponse("not found", { status: 404 });
+
+  const conversation = getConversationById(lead.conversation_id);
+  const messages = getRecentHistory(lead.conversation_id, 20).map((m) => ({
+    role: m.role,
+    content: m.content,
+    created_at: m.created_at,
+  }));
+
+  return NextResponse.json({ lead, conversation, messages });
+}
 
 export async function PATCH(
   req: NextRequest,

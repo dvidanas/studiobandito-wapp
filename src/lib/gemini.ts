@@ -5,6 +5,25 @@ export interface ChatMessage {
   content: string;
 }
 
+export async function getRawCompletion(prompt: string): Promise<string> {
+  const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+  const apiKey = process.env.GEMINI_API_KEY!;
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2 },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${await res.text()}`);
+  const json = await res.json();
+  return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+}
+
 export async function getChatCompletion(
   history: ChatMessage[]
 ): Promise<string> {

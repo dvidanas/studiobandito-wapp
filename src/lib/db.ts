@@ -69,9 +69,11 @@ function migrate(db: Database.Database) {
   // Migraciones incrementales (idempotentes con try/catch)
   try {
     db.exec("ALTER TABLE conversations ADD COLUMN has_lead INTEGER NOT NULL DEFAULT 0");
-  } catch {
-    // columna ya existe
-  }
+  } catch { /* ya existe */ }
+
+  try {
+    db.exec("ALTER TABLE leads ADD COLUMN summary TEXT");
+  } catch { /* ya existe */ }
 }
 
 // ── Tipos ──────────────────────────────────────────────────
@@ -104,6 +106,7 @@ export interface Lead {
   problem: string | null;
   status: "nuevo" | "seguimiento" | "cerrado" | "descartado";
   notes: string | null;
+  summary: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -282,6 +285,20 @@ export function updateLead(
 
 export function deleteLead(id: number): void {
   getDb().prepare("DELETE FROM leads WHERE id = ?").run(id);
+}
+
+export function getLeadById(id: number): Lead | null {
+  return (
+    getDb()
+      .prepare<number, Lead>("SELECT * FROM leads WHERE id = ? LIMIT 1")
+      .get(id) ?? null
+  );
+}
+
+export function updateLeadSummary(id: number, summary: string): void {
+  getDb()
+    .prepare("UPDATE leads SET summary = ?, updated_at = unixepoch() WHERE id = ?")
+    .run(summary, id);
 }
 
 export function getLeadByConversationId(conversationId: number): Lead | null {
