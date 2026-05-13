@@ -13,6 +13,9 @@ import {
 } from "@/lib/db";
 import { getChatCompletion, type ChatMessage } from "@/lib/gemini";
 import { sendTextMessage } from "./client";
+import { clientConfig } from "@/lib/client.config";
+
+const DELAY = clientConfig.responseDelayMs ?? 8000;
 
 const INTENT_KEYWORDS = [
   "presupuesto", "precio", "cuánto", "cuanto", "contratar", "contrataría",
@@ -34,6 +37,9 @@ const NOT_A_NAME = [
 const NAME_ASK_KEYWORDS = [
   "nombre", "llamás", "llamas", "identificarte", "cómo te", "como te",
 ];
+
+// Timers de debounce por conversation_id
+const pendingResponses = new Map<number, ReturnType<typeof setTimeout>>();
 
 function hasLeadIntent(text: string): boolean {
   const lower = text.toLowerCase();
@@ -57,6 +63,51 @@ function looksLikeName(text: string, lastBotMessage: string | null): boolean {
   if (NOT_A_NAME.includes(t.toLowerCase())) return false;
   if (hasLeadIntent(t)) return false;
   return true;
+}
+
+async function sendDebouncedReply(convoId: number, phone: string): Promise<void> {
+  pendingResponses.delete(convoId);
+
+  // Re-leer modo por si cambió mientras esperábamos
+  const fresh = getConversationById(convoId);
+  if (!fresh || fresh.mode !== "AI") {
+    console.log(`[wh] modo ${fresh?.mode ?? "?"} — sin respuesta automática`);
+    return;
+  }
+
+  // Re-leer historial completo (pueden haber llegado mensajes nuevos)
+  const history = getRecentHistory(convoId, 20);
+  const chatHistory: ChatMessage[] = history.map((m) => ({
+    role: m.role === "user" ? "user" : "assistant",
+    content: m.content,
+  }));
+
+  const t0 = Date.now();
+  let rawReply: string;
+  try {
+    rawReply = await getChatCompletion(chatHistory);
+  } catch (err) {
+    console.error(`[wh] error llamando a Gemini para +${phone}:`, err);
+    return;
+  }
+  console.log(`[wh] LLM en ${Date.now() - t0}ms`);
+
+  if (!rawReply) {
+    console.warn("[wh] Gemini devolvió respuesta vacía");
+    return;
+  }
+
+  const reply = rawReply.replace(/\n+/g, " ").trim();
+
+  const messageId = insertMessage(convoId, "assistant", reply, null);
+
+  try {
+    const { wa_message_id } = await sendTextMessage(phone, reply);
+    updateMessageWaId(messageId, wa_message_id);
+    console.log(`[wh] → enviado a +${phone}`);
+  } catch (err) {
+    console.error(`[wh] error al enviar a +${phone}:`, err);
+  }
 }
 
 export async function processWebhookPayload(payload: unknown): Promise<void> {
@@ -140,40 +191,28 @@ async function handleIncomingMessage(
     }
   }
 
-  // 10. Re-leer modo (puede haber cambiado)
+  // 10. Verificar modo AI antes de programar respuesta
   const fresh = getConversationById(convo.id);
   if (!fresh || fresh.mode !== "AI") {
     console.log(`[wh] modo ${fresh?.mode ?? "?"} — sin respuesta automática`);
     return;
   }
 
-  // 11. Construir historial y llamar a Gemini
-  const chatHistory: ChatMessage[] = history.map((m) => ({
-    role: m.role === "user" ? "user" : "assistant",
-    content: m.content,
-  }));
-
-  const t0 = Date.now();
-  const rawReply = await getChatCompletion(chatHistory);
-  console.log(`[wh] LLM en ${Date.now() - t0}ms`);
-
-  if (!rawReply) {
-    console.warn("[wh] Gemini devolvió respuesta vacía");
-    return;
+  // 11. Debounce: cancelar timer anterior y programar uno nuevo
+  const existing = pendingResponses.get(convo.id);
+  if (existing) {
+    clearTimeout(existing);
+    console.log(`[wh] timer reiniciado para +${phone}`);
   }
 
-  // Eliminar saltos de línea para respuesta de párrafo único
-  const reply = rawReply.replace(/\n+/g, " ").trim();
+  pendingResponses.set(
+    convo.id,
+    setTimeout(() => {
+      sendDebouncedReply(convo.id, phone).catch((err) =>
+        console.error(`[wh] error en sendDebouncedReply para +${phone}:`, err)
+      );
+    }, DELAY)
+  );
 
-  // 12. Guardar respuesta del asistente
-  const messageId = insertMessage(convo.id, "assistant", reply, null);
-
-  // 13. Enviar por WhatsApp y actualizar wa_message_id
-  try {
-    const { wa_message_id } = await sendTextMessage(phone, reply);
-    updateMessageWaId(messageId, wa_message_id);
-    console.log(`[wh] → enviado a +${phone}`);
-  } catch (err) {
-    console.error(`[wh] error al enviar a +${phone}:`, err);
-  }
+  console.log(`[wh] respuesta programada en ${DELAY}ms para +${phone}`);
 }

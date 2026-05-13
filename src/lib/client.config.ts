@@ -101,6 +101,8 @@ export const clientConfig = {
     `,
   },
 
+  responseDelayMs: 8000,
+
   tools: `
     CALIFICACIÓN DE CONSULTAS:
     - El bot puede hacer preguntas para entender qué necesita
