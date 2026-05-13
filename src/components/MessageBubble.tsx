@@ -42,8 +42,12 @@ export function MessageBubble({ message }: Props) {
           </span>
         )}
         <div className="relative">
-          <span className="whitespace-pre-wrap break-words">{message.content}</span>
-          <span className="inline-block w-[65px] h-3"></span>
+          <span className="whitespace-pre-wrap break-words">
+            {message.content.replace(/\n\s*\n/g, '\n')}
+          </span>
+          {/* Espaciador invisible para evitar que la hora se encime */}
+          <span className="inline-block w-[75px] h-[18px] align-bottom"></span>
+          
           <div
             className="absolute bottom-0 right-0 flex items-center gap-1"
           >
