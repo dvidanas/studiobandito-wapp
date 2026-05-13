@@ -28,7 +28,7 @@ export function MessageBubble({ message }: Props) {
       className={`flex ${isIncoming ? "justify-start" : "justify-end"} mb-1.5`}
     >
       <div
-        className={`relative max-w-[85%] sm:max-w-[70%] px-2.5 pt-1.5 pb-2 text-[14.2px] leading-5 shadow-sm ${
+        className={`relative max-w-[85%] sm:max-w-[70%] px-2.5 pt-1.5 pb-1.5 text-[14.2px] leading-[19px] shadow-sm ${
           isIncoming
             ? "bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-text-main)] rounded-lg rounded-tl-none"
             : "bg-[var(--color-wa-bubble-out)] text-[var(--color-wa-text-main)] rounded-lg rounded-tr-none"
@@ -41,29 +41,29 @@ export function MessageBubble({ message }: Props) {
             {isAssistant ? "IA" : "Agente"}
           </span>
         )}
-        <p className="whitespace-pre-wrap break-words">
-          {message.content}
-          <span className="inline-block w-12 h-1 ml-2"></span>
-        </p>
-        <div
-          className="absolute bottom-1 right-2 flex items-center gap-1"
-        >
-          <span className="text-[10px] text-[var(--color-wa-text-sec)]">
-            {formatTime(message.created_at)}
-          </span>
-          {!isIncoming && (
-            <span className="flex items-center text-[var(--color-wa-text-sec)]">
-              {failedToSend ? (
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                </svg>
-              )}
+        <div className="relative">
+          <span className="whitespace-pre-wrap break-words">{message.content}</span>
+          <span className="inline-block w-[65px] h-3"></span>
+          <div
+            className="absolute bottom-0 right-0 flex items-center gap-1"
+          >
+            <span className="text-[10px] leading-none text-[var(--color-wa-text-sec)]">
+              {formatTime(message.created_at)}
             </span>
-          )}
+            {!isIncoming && (
+              <span className="flex items-center text-[var(--color-wa-text-sec)]">
+                {failedToSend ? (
+                  <svg className="w-3.5 h-3.5 -mt-[1px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5 -mt-[1px]" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                  </svg>
+                )}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
