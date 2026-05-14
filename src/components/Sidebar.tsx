@@ -103,6 +103,14 @@ export function Sidebar({ newLeadsCount: propCount }: { newLeadsCount?: number }
 
       {/* Bottom actions */}
       <div className="p-2 border-t border-[var(--color-wa-sep)] flex flex-col gap-2">
+        {/* Crédito */}
+        <p className="hidden lg:block text-center px-3 py-1" style={{ fontSize: "10px", color: "var(--color-wa-text-sec)", opacity: 0.4 }}>
+          Desarrollado por{" "}
+          <a href="https://www.feer.com.ar" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }} className="hover:underline">
+            Feer
+          </a>
+        </p>
+
         <button
           onClick={toggleTheme}
           className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors w-full"

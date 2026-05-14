@@ -33,6 +33,18 @@ export function BottomNav() {
   const inactiveClass = "text-[var(--color-wa-text-sec)]";
 
   return (
+    <>
+      {/* Crédito sobre el nav */}
+      <p
+        className="md:hidden fixed z-40 left-0 right-0 text-center"
+        style={{ bottom: "calc(60px + env(safe-area-inset-bottom))", fontSize: "10px", color: "var(--color-wa-text-sec)", opacity: 0.4, pointerEvents: "none" }}
+      >
+        Desarrollado por{" "}
+        <a href="https://www.feer.com.ar" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", pointerEvents: "auto" }} className="hover:underline">
+          Feer
+        </a>
+      </p>
+
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--color-wa-header)] border-t border-[var(--color-wa-sep)] flex items-center justify-around"
       style={{ height: "calc(60px + env(safe-area-inset-bottom))", paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -80,5 +92,6 @@ export function BottomNav() {
         <span className="text-[10px] font-medium">Salir</span>
       </button>
     </nav>
+    </>
   );
 }
