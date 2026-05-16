@@ -11,8 +11,12 @@ import {
   setConversationHasLead,
   getLeadByConversationId,
   getNextAvailableSlots,
+  getAvailableSlots,
+  createAppointment,
+  hasAppointmentForSlot,
+  type AvailableSlot,
 } from "@/lib/db";
-import { getChatCompletion, type ChatMessage } from "@/lib/gemini";
+import { getChatCompletion, getRawCompletion, type ChatMessage } from "@/lib/gemini";
 import { sendTextMessage } from "./client";
 import { clientConfig } from "@/lib/client.config";
 
@@ -100,10 +104,11 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     | { enabled: boolean; defaultDuration: number }
     | undefined;
   let availabilityNote = "";
+  let offeredSlots: Array<AvailableSlot & { date: string }> = [];
   if (apptConfig?.enabled) {
-    const slots = getNextAvailableSlots(3, apptConfig.defaultDuration ?? 30);
-    if (slots.length > 0) {
-      const slotList = slots
+    offeredSlots = getNextAvailableSlots(3, apptConfig.defaultDuration ?? 30);
+    if (offeredSlots.length > 0) {
+      const slotList = offeredSlots
         .slice(0, 6)
         .map((s) => `${s.date} ${s.time_start}`)
         .join(", ");
@@ -148,6 +153,95 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
   } catch (err) {
     console.error(`[wh] error al enviar a +${phone}:`, err);
   }
+
+  // Intentar detectar si el usuario confirmó un turno
+  if (apptConfig?.enabled && offeredSlots.length > 0) {
+    tryBookAppointmentFromChat(convoId, phone, history, offeredSlots, apptConfig.defaultDuration ?? 30).catch(
+      (err) => console.error("[appt] error en tryBookAppointmentFromChat:", err)
+    );
+  }
+}
+
+async function tryBookAppointmentFromChat(
+  convoId: number,
+  phone: string,
+  history: { role: string; content: string }[],
+  offeredSlots: Array<AvailableSlot & { date: string }>,
+  defaultDuration: number
+): Promise<void> {
+  const lastUserMsg = [...history].reverse().find((m) => m.role === "user");
+  if (!lastUserMsg) return;
+
+  const slotList = offeredSlots.slice(0, 8).map((s) => `${s.date} ${s.time_start}`).join(", ");
+  const conversation = history.slice(-6).map((m) =>
+    `${m.role === "user" ? "Usuario" : "Bot"}: ${m.content}`
+  ).join("\n");
+
+  const prompt = `Sos un extractor de datos. Analizá esta conversación y determiná si el ÚLTIMO mensaje del usuario confirma o elige un turno específico de la lista.
+
+Turnos disponibles ofrecidos: ${slotList}
+
+Conversación:
+${conversation}
+
+Si el usuario eligió o confirmó un turno concreto de la lista, respondé ÚNICAMENTE con este JSON (sin markdown):
+{"date":"YYYY-MM-DD","time_start":"HH:MM"}
+
+Si NO eligió ninguno todavía (solo pregunta, duda, o habla de otra cosa), respondé ÚNICAMENTE con:
+null`;
+
+  let raw: string;
+  try {
+    raw = await getRawCompletion(prompt);
+  } catch (err) {
+    console.error("[appt] error en extracción de turno:", err);
+    return;
+  }
+
+  const clean = raw.trim().replace(/```json|```/g, "").trim();
+  if (clean === "null" || !clean.startsWith("{")) return;
+
+  let parsed: { date?: string; time_start?: string };
+  try {
+    parsed = JSON.parse(clean);
+  } catch {
+    return;
+  }
+
+  const { date, time_start } = parsed;
+  if (!date || !time_start) return;
+
+  // Verificar que el slot sigue disponible en DB (no solo en la lista ofrecida)
+  const stillAvailable = getAvailableSlots(date, defaultDuration).some(
+    (s) => s.time_start === time_start
+  );
+  if (!stillAvailable) {
+    console.log(`[appt] slot ${date} ${time_start} ya no está disponible, ignorando`);
+    return;
+  }
+
+  // Evitar duplicado para esta conversación
+  if (hasAppointmentForSlot(convoId, date, time_start)) {
+    console.log(`[appt] ya existe turno para conversación ${convoId} en ${date} ${time_start}`);
+    return;
+  }
+
+  const lead = getLeadByConversationId(convoId);
+  const validSlot = offeredSlots.find((s) => s.date === date && s.time_start === time_start);
+  if (!validSlot) return;
+
+  const id = createAppointment({
+    resource_id: validSlot.resource_id,
+    conversation_id: convoId,
+    date,
+    time_start,
+    duration_minutes: defaultDuration,
+    source: "bot",
+    contact_name: lead?.name ?? null,
+    contact_phone: phone,
+  });
+
+  console.log(`[appt] turno PENDIENTE creado id=${id} para +${phone} → ${date} ${time_start}`);
 }
 
 export async function processWebhookPayload(payload: unknown): Promise<void> {

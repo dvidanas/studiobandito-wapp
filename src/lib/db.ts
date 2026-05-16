@@ -608,6 +608,16 @@ export function deleteAppointment(id: number): void {
   getDb().prepare("DELETE FROM appointments WHERE id = ?").run(id);
 }
 
+export function hasAppointmentForSlot(conversationId: number, date: string, timeStart: string): boolean {
+  return (
+    getDb()
+      .prepare<[number, string, string], { id: number }>(
+        "SELECT id FROM appointments WHERE conversation_id = ? AND date = ? AND time_start = ? AND status != 'cancelled'"
+      )
+      .get(conversationId, date, timeStart) !== undefined
+  );
+}
+
 export function getAppointmentStats(): { pending: number; confirmed: number; cancelled: number } {
   const today = new Date().toISOString().slice(0, 10);
   const rows = getDb()
