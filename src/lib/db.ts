@@ -133,6 +133,32 @@ function migrate(db: Database.Database) {
     }
   }
 
+  // Tablas de configuración
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS services (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      price TEXT,
+      duration_minutes INTEGER NOT NULL DEFAULT 30,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+  `);
+
+  // Seed settings desde client.config si la tabla está vacía
+  const settingsCount = db.prepare<[], { count: number }>("SELECT COUNT(*) as count FROM settings").get()!;
+  if (settingsCount.count === 0) {
+    const ins = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
+    ins.run("business_name", clientConfig.businessName);
+    ins.run("business_description", clientConfig.businessDescription.trim());
+  }
+
   // Migraciones incrementales (idempotentes con try/catch)
   try {
     db.exec("ALTER TABLE conversations ADD COLUMN has_lead INTEGER NOT NULL DEFAULT 0");
@@ -631,4 +657,104 @@ export function getAppointmentStats(): { pending: number; confirmed: number; can
     confirmed: map.confirmed ?? 0,
     cancelled: map.cancelled ?? 0,
   };
+}
+
+// ── Settings ────────────────────────────────────────────────
+
+export function getSetting(key: string): string | null {
+  return getDb().prepare<[string], { value: string }>("SELECT value FROM settings WHERE key = ?").get(key)?.value ?? null;
+}
+
+export function setSetting(key: string, value: string): void {
+  getDb().prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+}
+
+export function getAllSettings(): Record<string, string> {
+  const rows = getDb().prepare<[], { key: string; value: string }>("SELECT key, value FROM settings").all();
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
+// ── Services ────────────────────────────────────────────────
+
+export interface Service {
+  id: number;
+  name: string;
+  description: string | null;
+  price: string | null;
+  duration_minutes: number;
+  active: number;
+  created_at: number;
+}
+
+export function listServices(includeInactive = false): Service[] {
+  const query = includeInactive
+    ? "SELECT * FROM services ORDER BY name ASC"
+    : "SELECT * FROM services WHERE active = 1 ORDER BY name ASC";
+  return getDb().prepare<[], Service>(query).all();
+}
+
+export function createService(data: Omit<Service, "id" | "created_at">): number {
+  const res = getDb()
+    .prepare("INSERT INTO services (name, description, price, duration_minutes, active) VALUES (?, ?, ?, ?, ?)")
+    .run(data.name, data.description ?? null, data.price ?? null, data.duration_minutes, data.active);
+  return res.lastInsertRowid as number;
+}
+
+export function updateService(id: number, data: Partial<Omit<Service, "id" | "created_at">>): void {
+  const fields = Object.entries(data).map(([k]) => `${k} = ?`).join(", ");
+  const values = Object.values(data);
+  getDb().prepare(`UPDATE services SET ${fields} WHERE id = ?`).run(...values, id);
+}
+
+export function deleteService(id: number): void {
+  getDb().prepare("DELETE FROM services WHERE id = ?").run(id);
+}
+
+// ── Resources CRUD ──────────────────────────────────────────
+
+export function listAllResources(): Resource[] {
+  return getDb().prepare<[], Resource>("SELECT * FROM resources ORDER BY id").all();
+}
+
+export function createResource(name: string): number {
+  const res = getDb().prepare("INSERT INTO resources (name) VALUES (?)").run(name);
+  return res.lastInsertRowid as number;
+}
+
+export function updateResource(id: number, data: { name?: string; active?: number }): void {
+  const fields = Object.entries(data).map(([k]) => `${k} = ?`).join(", ");
+  const values = Object.values(data);
+  getDb().prepare(`UPDATE resources SET ${fields} WHERE id = ?`).run(...values, id);
+}
+
+export function deleteResource(id: number): void {
+  getDb().prepare("DELETE FROM resources WHERE id = ?").run(id);
+}
+
+// ── Availability slots CRUD ─────────────────────────────────
+
+export interface AvailabilitySlotRow {
+  id: number;
+  resource_id: number;
+  day_of_week: number;
+  time_start: string;
+  time_end: string;
+}
+
+export function getAvailabilityForResource(resourceId: number): AvailabilitySlotRow[] {
+  return getDb()
+    .prepare<[number], AvailabilitySlotRow>(
+      "SELECT * FROM availability_slots WHERE resource_id = ? ORDER BY day_of_week, time_start"
+    )
+    .all(resourceId);
+}
+
+export function setAvailabilityForResource(
+  resourceId: number,
+  slots: Array<{ day_of_week: number; time_start: string; time_end: string }>
+): void {
+  const db = getDb();
+  db.prepare("DELETE FROM availability_slots WHERE resource_id = ?").run(resourceId);
+  const ins = db.prepare("INSERT INTO availability_slots (resource_id, day_of_week, time_start, time_end) VALUES (?, ?, ?, ?)");
+  for (const s of slots) ins.run(resourceId, s.day_of_week, s.time_start, s.time_end);
 }
