@@ -306,7 +306,7 @@ export default function AppointmentsPage() {
         {/* MOBILE: day tabs + list */}
         <div className="flex md:hidden flex-col flex-1 overflow-hidden">
           {/* Day scroll tabs */}
-          <div className="flex overflow-x-auto border-b border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] flex-shrink-0">
+          <div className="flex border-b border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] flex-shrink-0">
             {weekDays.map((dayDate) => {
               const dayStr = dateToStr(dayDate);
               const isToday = dayStr === today;
@@ -316,7 +316,7 @@ export default function AppointmentsPage() {
                 <button
                   key={dayStr}
                   onClick={() => setSelectedDay(dayStr)}
-                  className={`flex flex-col items-center px-3 py-2 flex-shrink-0 border-b-2 transition-colors ${
+                  className={`flex flex-col items-center flex-1 py-2 border-b-2 transition-colors ${
                     isSelected
                       ? "border-[var(--color-wa-green)] text-[var(--color-wa-green)]"
                       : "border-transparent text-[var(--color-wa-text-sec)]"
