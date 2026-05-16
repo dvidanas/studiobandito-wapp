@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ConnectionGate } from "@/components/ConnectionGate";
@@ -27,6 +27,16 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
   });
   const [mobileView, setMobileView] = useState<"list" | "conversation">("list");
 
+  // Pull-to-refresh
+  const listRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number | null>(null);
+  const pullDistanceRef = useRef(0);
+  const isRefreshingRef = useRef(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const PULL_THRESHOLD = 60;
+  const MAX_PULL = 80;
+
   const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch("/api/conversations");
@@ -44,6 +54,52 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
     const interval = setInterval(fetchConversations, 2000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (el.scrollTop === 0) touchStartY.current = e.touches[0].clientY;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchStartY.current === null || isRefreshingRef.current) return;
+      const diff = e.touches[0].clientY - touchStartY.current;
+      if (diff > 0) {
+        e.preventDefault();
+        const d = Math.min(diff, MAX_PULL);
+        pullDistanceRef.current = d;
+        setPullDistance(d);
+      } else {
+        touchStartY.current = null;
+        pullDistanceRef.current = 0;
+        setPullDistance(0);
+      }
+    };
+
+    const onTouchEnd = async () => {
+      if (pullDistanceRef.current >= PULL_THRESHOLD && !isRefreshingRef.current) {
+        isRefreshingRef.current = true;
+        setIsRefreshing(true);
+        await fetchConversations();
+        isRefreshingRef.current = false;
+        setIsRefreshing(false);
+      }
+      touchStartY.current = null;
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [fetchConversations, MAX_PULL, PULL_THRESHOLD]);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
 
@@ -102,7 +158,29 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        {/* Pull-to-refresh indicator */}
+        <div
+          className="flex-shrink-0 flex items-end justify-center overflow-hidden bg-[var(--color-wa-panel-l)] transition-[height] duration-150"
+          style={{ height: isRefreshing ? 48 : pullDistance }}
+        >
+          <div className="pb-2">
+            {isRefreshing ? (
+              <svg className="w-5 h-5 animate-spin text-[var(--color-wa-green)]" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a10 10 0 100 10 10 10 0 010-10z" />
+              </svg>
+            ) : (
+              <svg
+                className={`w-5 h-5 text-[var(--color-wa-text-sec)] transition-transform duration-200 ${pullDistance >= PULL_THRESHOLD ? "rotate-180" : ""}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            )}
+          </div>
+        </div>
+
+        <div ref={listRef} className="flex-1 overflow-y-auto">
           <ConversationList
             conversations={conversations}
             selectedId={selectedId}
