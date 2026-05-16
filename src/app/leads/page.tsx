@@ -230,8 +230,8 @@ export default function LeadsPage() {
         bg-[var(--color-wa-panel-l)] border-r border-[var(--color-wa-sep)] flex-col
       `}>
         <div className="px-4 py-3 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)]">
-          <h2 className="text-sm font-semibold text-[var(--color-wa-text-main)]">Leads</h2>
-          <p className="text-xs text-[var(--color-wa-text-sec)]">{leads.length} contactos</p>
+          <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Leads</h2>
+          <p className="text-sm text-[var(--color-wa-text-sec)]">{leads.length} contactos</p>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -253,26 +253,26 @@ export default function LeadsPage() {
                         selectedId === lead.id ? "bg-[var(--color-wa-hover)]" : ""
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-full ${tempAvatarBg(sm?.temperatura)} flex items-center justify-center flex-shrink-0 text-sm font-bold ${tempAvatarText(sm?.temperatura)}`}>
+                      <div className={`w-11 h-11 rounded-full ${tempAvatarBg(sm?.temperatura)} flex items-center justify-center flex-shrink-0 text-base font-bold ${tempAvatarText(sm?.temperatura)}`}>
                         {displayName(lead).slice(0, 1).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center gap-1">
-                          <span className="text-sm font-medium text-[var(--color-wa-text-main)] truncate">
+                          <span className="text-base font-medium text-[var(--color-wa-text-main)] truncate">
                             {displayName(lead)}
                           </span>
-                          <span className="text-[10px] text-[var(--color-wa-text-sec)] flex-shrink-0">{timeStr(lead.created_at)}</span>
+                          <span className="text-xs text-[var(--color-wa-text-sec)] flex-shrink-0">{timeStr(lead.created_at)}</span>
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${STATUS_STYLES[lead.status]}`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${STATUS_STYLES[lead.status]}`}>
                             {STATUS_LABELS[lead.status]}
                           </span>
                           {sm ? (
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${tempBadgeStyle(sm.temperatura)}`}>
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${tempBadgeStyle(sm.temperatura)}`}>
                               {tempEmoji(sm.temperatura)} {sm.temperatura}
                             </span>
                           ) : (
-                            <span className="text-[11px] text-[var(--color-wa-text-sec)] truncate">
+                            <span className="text-sm text-[var(--color-wa-text-sec)] truncate">
                               {lead.business || `+${lead.conv_phone}`}
                             </span>
                           )}
@@ -335,9 +335,9 @@ export default function LeadsPage() {
                     className="text-sm text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)] transition-colors flex items-center gap-1 mt-0.5"
                   >
                     +{selectedLead.conv_phone}
-                    <span className="text-[11px] ml-1 opacity-70">{copiedPhone ? "✓ copiado" : "⎘"}</span>
+                    <span className="text-xs ml-1 opacity-70">{copiedPhone ? "✓ copiado" : "⎘"}</span>
                   </button>
-                  <p className="text-[11px] text-[var(--color-wa-text-sec)] mt-1">
+                  <p className="text-xs text-[var(--color-wa-text-sec)] mt-1">
                     Lead desde {new Date(selectedLead.created_at * 1000).toLocaleDateString("es-AR")}
                   </p>
                 </div>
@@ -358,13 +358,13 @@ export default function LeadsPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="text-base leading-none">✨</span>
-                  <h3 className="text-sm font-semibold text-[var(--color-wa-text-main)]">Resumen de la conversación</h3>
+                  <h3 className="text-base font-semibold text-[var(--color-wa-text-main)]">Resumen de la conversación</h3>
                 </div>
                 {!summary && (
                   <button
                     onClick={generateSummary}
                     disabled={loadingSummary}
-                    className="text-xs px-3 py-1.5 bg-[var(--color-wa-green)] text-white rounded-lg hover:bg-[var(--color-wa-green-dark)] disabled:opacity-50 transition-colors"
+                    className="text-sm px-3 py-1.5 bg-[var(--color-wa-green)] text-white rounded-lg hover:bg-[var(--color-wa-green-dark)] disabled:opacity-50 transition-colors"
                   >
                     {loadingSummary ? "Generando…" : "Generar resumen"}
                   </button>
@@ -374,11 +374,11 @@ export default function LeadsPage() {
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-[var(--color-wa-bg-main)] rounded-lg p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-1">Qué busca</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-1">Qué busca</p>
                       <p className="text-sm text-[var(--color-wa-text-main)]">{summary.interes}</p>
                     </div>
                     <div className="bg-[var(--color-wa-bg-main)] rounded-lg p-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-1">Temperatura</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-1">Temperatura</p>
                       <span className={`inline-flex items-center gap-1 text-sm font-semibold px-2 py-0.5 rounded-full ${tempBadgeStyle(summary.temperatura)}`}>
                         {tempEmoji(summary.temperatura)} {summary.temperatura.charAt(0).toUpperCase() + summary.temperatura.slice(1)}
                       </span>
@@ -402,11 +402,11 @@ export default function LeadsPage() {
 
             {/* DATOS */}
             <div className="bg-[var(--color-wa-panel-l)] rounded-xl border border-[var(--color-wa-sep)] p-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-3">Datos del contacto</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-3">Datos del contacto</h3>
               <div>
                 {/* Teléfono */}
                 <div className="flex items-center py-2.5 border-b border-[var(--color-wa-sep)] gap-3">
-                  <span className="text-xs text-[var(--color-wa-text-sec)] w-20 flex-shrink-0">Teléfono</span>
+                  <span className="text-sm text-[var(--color-wa-text-sec)] w-20 flex-shrink-0">Teléfono</span>
                   <div className="flex items-center gap-2 flex-1">
                     <span className="text-sm font-mono text-[var(--color-wa-text-main)]">+{selectedLead.conv_phone}</span>
                     <button
@@ -421,7 +421,7 @@ export default function LeadsPage() {
 
                 {/* Nombre */}
                 <div className="flex items-center py-2.5 border-b border-[var(--color-wa-sep)] gap-3">
-                  <span className="text-xs text-[var(--color-wa-text-sec)] w-20 flex-shrink-0">Nombre</span>
+                  <span className="text-sm text-[var(--color-wa-text-sec)] w-20 flex-shrink-0">Nombre</span>
                   {editingField?.field === "name" ? (
                     <input
                       autoFocus
@@ -444,7 +444,7 @@ export default function LeadsPage() {
 
                 {/* Negocio */}
                 <div className="flex items-center py-2.5 border-b border-[var(--color-wa-sep)] gap-3">
-                  <span className="text-xs text-[var(--color-wa-text-sec)] w-20 flex-shrink-0">Negocio</span>
+                  <span className="text-sm text-[var(--color-wa-text-sec)] w-20 flex-shrink-0">Negocio</span>
                   {editingField?.field === "business" ? (
                     <input
                       autoFocus
@@ -491,25 +491,25 @@ export default function LeadsPage() {
 
             {/* NOTAS */}
             <div className="bg-[var(--color-wa-panel-l)] rounded-xl border border-[var(--color-wa-sep)] p-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-3">Notas internas</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-3">Notas internas</h3>
               <textarea
                 key={selectedId}
                 rows={4}
                 value={notes}
                 onChange={(e) => handleNotesChange(e.target.value)}
                 placeholder="Agregar notas del seguimiento..."
-                className="w-full text-sm bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg p-3 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] resize-none placeholder:italic placeholder:text-[var(--color-wa-text-sec)] transition-colors"
+                className="w-full text-base bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg p-3 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] resize-none placeholder:italic placeholder:text-[var(--color-wa-text-sec)] transition-colors"
               />
             </div>
 
             {/* HISTORIAL */}
             {previewMessages.length > 0 && (
               <div className="bg-[var(--color-wa-panel-l)] rounded-xl border border-[var(--color-wa-sep)] p-5">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-3">Últimos mensajes</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-wa-text-sec)] mb-3">Últimos mensajes</h3>
                 <div className="space-y-2">
                   {previewMessages.map((m, i) => (
                     <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[82%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                      <div className={`max-w-[82%] px-3 py-2 rounded-xl text-sm leading-relaxed ${
                         m.role === "user"
                           ? "bg-[var(--color-wa-green)] text-white rounded-br-sm"
                           : "bg-[var(--color-wa-bg-main)] text-[var(--color-wa-text-main)] rounded-bl-sm"
@@ -522,7 +522,7 @@ export default function LeadsPage() {
                 <div className="mt-3 text-center">
                   <a
                     href={`/?id=${selectedLead.conversation_id}`}
-                    className="text-xs font-medium text-[var(--color-wa-green)] hover:underline"
+                    className="text-sm font-medium text-[var(--color-wa-green)] hover:underline"
                   >
                     Ver conversación completa →
                   </a>

@@ -83,9 +83,9 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
       `}>
         <div className="px-4 py-3 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--color-wa-text-main)]">Chats</h2>
+            <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Chats</h2>
             {connectionStatus.phone && (
-              <p className="text-xs text-[var(--color-wa-text-sec)]">+{connectionStatus.phone}</p>
+              <p className="text-sm text-[var(--color-wa-text-sec)]">+{connectionStatus.phone}</p>
             )}
           </div>
           <div className="flex items-center gap-2">
