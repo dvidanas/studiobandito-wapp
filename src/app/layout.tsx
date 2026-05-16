@@ -32,7 +32,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                let isDark = localStorage.getItem('theme') === 'dark' || !localStorage.getItem('theme');
+                let isDark = localStorage.getItem('theme') === 'dark';
                 if (isDark) {
                   document.documentElement.classList.add('dark');
                 } else {

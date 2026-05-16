@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ConnectionGate } from "@/components/ConnectionGate";
@@ -7,6 +7,14 @@ import { Sidebar } from "@/components/Sidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { ConversationList } from "@/components/ConversationList";
 import { ConversationPanel } from "@/components/ConversationPanel";
+
+type ChatFilter = "todos" | "leads" | "sinleer" | "bot";
+const CHAT_FILTERS: { key: ChatFilter; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "leads", label: "Leads" },
+  { key: "sinleer", label: "Sin leer" },
+  { key: "bot", label: "Bot activo" },
+];
 
 interface Conversation {
   id: number;
@@ -20,6 +28,7 @@ interface Conversation {
 
 function Dashboard({ connectionStatus }: { connectionStatus: { status: string; phone?: string; quality?: string; message?: string } }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [chatFilter, setChatFilter] = useState<ChatFilter>("todos");
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     const id = searchParams.get("id");
@@ -46,6 +55,15 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
     const interval = setInterval(fetchConversations, 2000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
+
+  const filteredConversations = useMemo(() => {
+    switch (chatFilter) {
+      case "leads": return conversations.filter((c) => c.has_lead === 1);
+      case "sinleer": return conversations.filter((c) => c.last_message_at !== null && c.last_message_at > Date.now() / 1000 - 3600);
+      case "bot": return conversations.filter((c) => c.mode === "AI");
+      default: return conversations;
+    }
+  }, [conversations, chatFilter]);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
 
@@ -85,9 +103,11 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
       `}>
         <div className="px-4 py-3 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Chats</h2>
+            <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Mensajes</h2>
             {connectionStatus.phone && (
-              <p className="text-sm text-[var(--color-wa-text-sec)]">+{connectionStatus.phone}</p>
+              <p className="text-sm text-[var(--color-wa-text-sec)]">
+              {connectionStatus.phone ? `+${connectionStatus.phone}` : ""}
+            </p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -104,9 +124,26 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
           </div>
         </div>
 
+        {/* Filter chips */}
+        <div className="px-3 py-2 flex gap-1.5 border-b border-[var(--color-wa-sep)] flex-shrink-0 overflow-x-auto scrollbar-hide">
+          {CHAT_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setChatFilter(f.key)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                chatFilter === f.key
+                  ? "bg-[var(--color-wa-green)] text-white"
+                  : "bg-[var(--color-wa-bg-main)] text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex-1 overflow-y-auto">
           <ConversationList
-            conversations={conversations}
+            conversations={filteredConversations}
             selectedId={selectedId}
             onSelect={handleSelect}
           />

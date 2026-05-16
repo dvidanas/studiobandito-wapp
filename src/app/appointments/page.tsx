@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
 import { BottomNav } from "@/components/BottomNav";
@@ -42,55 +42,432 @@ interface Stats {
 }
 
 const STATUS_STYLES = {
-  pending: "bg-yellow-500 text-white",
+  pending: "bg-amber-400 text-white",
   confirmed: "bg-[var(--color-wa-green)] text-white",
   cancelled: "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]",
 };
+const STATUS_LABELS = { pending: "Pendiente", confirmed: "Confirmado", cancelled: "Cancelado" };
 
-const STATUS_LABELS = {
-  pending: "Pendiente",
-  confirmed: "Confirmado",
-  cancelled: "Cancelado",
-};
-
-const DAY_NAMES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const DAY_NAMES_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-
-function getMonday(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const DAY_HEADERS = ["D","L","M","M","J","V","S"];
+const DAY_NAMES_FULL = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 
 function dateToStr(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
-
-function formatDate(str: string): string {
-  const [, m, d] = str.split("-");
-  return `${d}/${m}`;
-}
-
 function formatTime(t: string): string {
   return t.slice(0, 5);
 }
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
+function formatDateLabel(str: string): string {
+  const d = new Date(str + "T12:00:00Z");
+  const day = DAY_NAMES_FULL[d.getUTCDay()];
+  const num = d.getUTCDate();
+  const month = MONTH_NAMES[d.getUTCMonth()].toLowerCase();
+  return `${day} ${num} de ${month}`;
+}
+function getMonthBounds(date: Date): { from: string; to: string } {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  return {
+    from: dateToStr(new Date(y, m, 1)),
+    to: dateToStr(new Date(y, m + 1, 0)),
+  };
 }
 
+// ── Mini Calendar ──────────────────────────────────────────────────────────────
+
+function MiniCalendar({
+  currentMonth,
+  selectedDay,
+  appointmentDays,
+  onSelectDay,
+  onPrevMonth,
+  onNextMonth,
+  compact = false,
+}: {
+  currentMonth: Date;
+  selectedDay: string;
+  appointmentDays: Set<string>;
+  onSelectDay: (day: string) => void;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  compact?: boolean;
+}) {
+  const today = dateToStr(new Date());
+  const y = currentMonth.getFullYear();
+  const m = currentMonth.getMonth();
+  const startDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(dateToStr(new Date(y, m, d)));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks: (string | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Month nav */}
+      <div className="flex items-center justify-between mb-1">
+        <button
+          onClick={onPrevMonth}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors"
+        >
+          <svg className="w-4 h-4 text-[var(--color-wa-text-sec)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="text-sm font-semibold text-[var(--color-wa-text-main)]">
+          {MONTH_NAMES[m]} {y}
+        </span>
+        <button
+          onClick={onNextMonth}
+          className="p-1.5 rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors"
+        >
+          <svg className="w-4 h-4 text-[var(--color-wa-text-sec)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Day headers */}
+      <div className="grid grid-cols-7">
+        {DAY_HEADERS.map((d, i) => (
+          <div key={i} className="text-center text-[10px] font-semibold text-[var(--color-wa-text-sec)] uppercase py-1">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Weeks */}
+      <div className="flex flex-col gap-0.5">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-0.5">
+            {week.map((dayStr, di) => {
+              if (!dayStr) return <div key={di} />;
+              const isToday = dayStr === today;
+              const isSelected = dayStr === selectedDay;
+              const hasDot = appointmentDays.has(dayStr);
+              const dayNum = new Date(dayStr + "T12:00:00Z").getUTCDate();
+              return (
+                <button
+                  key={di}
+                  onClick={() => onSelectDay(dayStr)}
+                  className={`relative flex flex-col items-center justify-center w-full rounded-lg transition-all ${
+                    compact ? "py-1.5 text-xs" : "py-2 text-sm"
+                  } font-medium ${
+                    isSelected
+                      ? "bg-[var(--color-wa-green)] text-white"
+                      : isToday
+                      ? "ring-2 ring-[var(--color-wa-green)] text-[var(--color-wa-green)] font-bold"
+                      : "text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)]"
+                  }`}
+                >
+                  {dayNum}
+                  {hasDot && !isSelected && (
+                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--color-wa-green)]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend — only on desktop */}
+      {!compact && (
+        <div className="flex flex-col gap-1.5 pt-3 mt-1 border-t border-[var(--color-wa-sep)]">
+          <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-wa-green)]" />
+            Tiene turnos
+          </div>
+          <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
+            <span className="w-4 h-4 rounded-lg bg-[var(--color-wa-green)] flex items-center justify-center">
+              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </span>
+            Seleccionado
+          </div>
+          <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
+            <span className="w-4 h-4 rounded-lg ring-2 ring-[var(--color-wa-green)] flex items-center justify-center text-[var(--color-wa-green)] text-[10px] font-bold">h</span>
+            Hoy
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Day Appointment Card ───────────────────────────────────────────────────────
+
+function DayAppointmentCard({
+  appointment: a,
+  onStatusChange,
+  onDelete,
+}: {
+  appointment: Appointment;
+  onStatusChange: (id: number, status: Appointment["status"]) => void;
+  onDelete: (id: number) => void;
+}) {
+  const name = a.contact_name ?? a.contact_phone ?? "Sin nombre";
+  const accentColor = a.status === "pending" ? "#F59E0B" : a.status === "confirmed" ? "var(--wa-green)" : "var(--color-sep)";
+
+  return (
+    <div
+      className={`flex gap-3 p-3 rounded-xl border border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] transition-opacity ${
+        a.status === "cancelled" ? "opacity-40" : ""
+      }`}
+      style={{ borderLeft: `3px solid ${accentColor}` }}
+    >
+      {/* Time */}
+      <div className="flex-shrink-0 w-16 text-right">
+        <p className="text-sm font-semibold text-[var(--color-wa-text-main)]">{formatTime(a.time_start)}</p>
+        <p className="text-xs text-[var(--color-wa-text-sec)]">{formatTime(a.time_end)}</p>
+      </div>
+
+      {/* Divider */}
+      <div className="w-px bg-[var(--color-wa-sep)] flex-shrink-0" />
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[var(--color-wa-text-main)] truncate">{name}</p>
+        {a.service && (
+          <p className="text-xs text-[var(--color-wa-text-sec)] truncate">{a.service}</p>
+        )}
+        {a.contact_phone && a.contact_name && (
+          <p className="text-xs text-[var(--color-wa-text-sec)]">{a.contact_phone}</p>
+        )}
+        {a.notes && (
+          <p className="text-xs text-[var(--color-wa-text-sec)] italic mt-0.5 truncate">{a.notes}</p>
+        )}
+
+        {/* Badges */}
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${STATUS_STYLES[a.status]}`}>
+            {STATUS_LABELS[a.status]}
+          </span>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+            a.source === "bot"
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+              : "bg-[var(--color-wa-hover)] text-[var(--color-wa-text-sec)]"
+          }`}>
+            {a.source === "bot" ? "Bot" : "Manual"}
+          </span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          {a.status === "pending" && (
+            <button
+              onClick={() => onStatusChange(a.id, "confirmed")}
+              className="text-xs px-2.5 py-1 bg-[var(--color-wa-green)] text-white rounded-lg font-semibold hover:bg-[var(--color-wa-green-dark)] transition-colors"
+            >
+              Confirmar
+            </button>
+          )}
+          {a.status === "confirmed" && (
+            <button
+              onClick={() => onStatusChange(a.id, "cancelled")}
+              className="text-xs px-2.5 py-1 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors"
+            >
+              Cancelar
+            </button>
+          )}
+          {a.status === "pending" && (
+            <button
+              onClick={() => onStatusChange(a.id, "cancelled")}
+              className="text-xs px-2.5 py-1 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors"
+            >
+              Cancelar
+            </button>
+          )}
+          {a.status === "cancelled" && (
+            <button
+              onClick={() => onStatusChange(a.id, "pending")}
+              className="text-xs px-2.5 py-1 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors"
+            >
+              Reactivar
+            </button>
+          )}
+          {a.conversation_id !== null && (
+            <Link
+              href={`/?id=${a.conversation_id}`}
+              className="text-xs p-1 rounded border border-[var(--color-wa-green)] text-[var(--color-wa-green)] hover:bg-[var(--color-wa-green)] hover:text-white transition-colors"
+              title="Ir al chat"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </Link>
+          )}
+          <button
+            onClick={() => onDelete(a.id)}
+            className="text-xs p-1 rounded text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            title="Eliminar"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Day Panel ──────────────────────────────────────────────────────────────────
+
+function DayPanel({
+  selectedDay,
+  appointments,
+  loading,
+  onAdd,
+  onStatusChange,
+  onDelete,
+}: {
+  selectedDay: string;
+  appointments: Appointment[];
+  loading: boolean;
+  onAdd: () => void;
+  onStatusChange: (id: number, status: Appointment["status"]) => void;
+  onDelete: (id: number) => void;
+}) {
+  const label = formatDateLabel(selectedDay);
+  const count = appointments.length;
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Day header */}
+      <div className="px-4 py-3 flex items-center justify-between border-b border-[var(--color-wa-sep)] flex-shrink-0">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--color-wa-text-main)] capitalize">{label}</h2>
+          <p className="text-sm text-[var(--color-wa-text-sec)]">
+            {count === 0 ? "Sin turnos" : `${count} turno${count !== 1 ? "s" : ""}`}
+          </p>
+        </div>
+        <button
+          onClick={onAdd}
+          className="text-sm font-semibold text-[var(--color-wa-green)] hover:underline"
+        >
+          + Agregar
+        </button>
+      </div>
+
+      {/* Appointments */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-20 rounded-xl bg-[var(--color-wa-sep)] animate-pulse" />
+            ))}
+          </div>
+        ) : count === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <svg className="w-12 h-12 text-[var(--color-wa-text-sec)] opacity-20 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p className="text-base text-[var(--color-wa-text-sec)]">Sin turnos este día</p>
+            <button
+              onClick={onAdd}
+              className="mt-3 text-sm text-[var(--color-wa-green)] font-semibold hover:underline"
+            >
+              + Agregar turno
+            </button>
+          </div>
+        ) : (
+          appointments.map((a) => (
+            <DayAppointmentCard
+              key={a.id}
+              appointment={a}
+              onStatusChange={onStatusChange}
+              onDelete={onDelete}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Lista View ─────────────────────────────────────────────────────────────────
+
+function ListaView({
+  appointments,
+  loading,
+  onStatusChange,
+  onDelete,
+}: {
+  appointments: Appointment[];
+  loading: boolean;
+  onStatusChange: (id: number, status: Appointment["status"]) => void;
+  onDelete: (id: number) => void;
+}) {
+  const grouped = useMemo(() => {
+    const g: Record<string, Appointment[]> = {};
+    for (const a of appointments) {
+      if (!g[a.date]) g[a.date] = [];
+      g[a.date].push(a);
+    }
+    return Object.entries(g).sort(([a], [b]) => a.localeCompare(b));
+  }, [appointments]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 rounded-xl bg-[var(--color-wa-sep)] animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (grouped.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-[var(--color-wa-text-sec)]">Sin turnos este mes</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      {grouped.map(([date, appts]) => (
+        <div key={date}>
+          <p className="text-xs font-semibold text-[var(--color-wa-text-sec)] mb-2 uppercase tracking-widest">
+            {formatDateLabel(date)}
+          </p>
+          <div className="space-y-2">
+            {appts.map((a) => (
+              <DayAppointmentCard
+                key={a.id}
+                appointment={a}
+                onStatusChange={onStatusChange}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────────
+
 export default function AppointmentsPage() {
-  const [weekStart, setWeekStart] = useState<Date>(() => getMonday(new Date()));
+  const [viewMode, setViewMode] = useState<"calendar" | "lista">("calendar");
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedDay, setSelectedDay] = useState(() => dateToStr(new Date()));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [stats, setStats] = useState<Stats>({ pending: 0, confirmed: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
-  const [selectedDay, setSelectedDay] = useState<string>(() => dateToStr(new Date()));
 
   const [showModal, setShowModal] = useState(false);
   const [modalDate, setModalDate] = useState("");
@@ -104,9 +481,7 @@ export default function AppointmentsPage() {
   const [modalDuration, setModalDuration] = useState(30);
   const [savingModal, setSavingModal] = useState(false);
 
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const from = dateToStr(weekStart);
-  const to = dateToStr(weekDays[6]);
+  const { from, to } = useMemo(() => getMonthBounds(currentMonth), [currentMonth]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -128,7 +503,7 @@ export default function AppointmentsPage() {
   useEffect(() => {
     setLoading(true);
     fetchData();
-  }, [weekStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const interval = setInterval(fetchData, 15000);
@@ -145,6 +520,12 @@ export default function AppointmentsPage() {
         setModalSlot(filtered[0]?.time_start ?? "");
       });
   }, [showModal, modalDate, modalResource, modalDuration]);
+
+  const appointmentDays = useMemo(() => new Set(appointments.map((a) => a.date)), [appointments]);
+  const apptsByDay = useCallback(
+    (date: string) => appointments.filter((a) => a.date === date),
+    [appointments]
+  );
 
   async function changeStatus(id: number, status: Appointment["status"]) {
     setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
@@ -198,8 +579,34 @@ export default function AppointmentsPage() {
     }
   }
 
-  const apptsByDay = (date: string) => appointments.filter((a) => a.date === date);
-  const today = dateToStr(new Date());
+  const goToMonth = (newMonth: Date) => {
+    setCurrentMonth(newMonth);
+    const { from: nf, to: nt } = getMonthBounds(newMonth);
+    if (selectedDay < nf || selectedDay > nt) {
+      const todayStr = dateToStr(new Date());
+      setSelectedDay(todayStr >= nf && todayStr <= nt ? todayStr : nf);
+    }
+  };
+  const prevMonth = () => goToMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const nextMonth = () => goToMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+
+  const calendarProps = {
+    currentMonth,
+    selectedDay,
+    appointmentDays,
+    onSelectDay: setSelectedDay,
+    onPrevMonth: prevMonth,
+    onNextMonth: nextMonth,
+  };
+
+  const dayPanelProps = {
+    selectedDay,
+    appointments: apptsByDay(selectedDay),
+    loading,
+    onAdd: () => openModal(selectedDay),
+    onStatusChange: changeStatus,
+    onDelete: handleDelete,
+  };
 
   return (
     <div className="flex h-[calc(100dvh-60px)] md:h-dvh bg-[var(--color-wa-bg-main)]">
@@ -214,160 +621,72 @@ export default function AppointmentsPage() {
               {stats.pending} pendientes · {stats.confirmed} confirmados
             </p>
           </div>
-          <button
-            onClick={() => openModal(selectedDay)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-[var(--color-wa-green)] text-white text-sm font-semibold rounded-lg hover:bg-[var(--color-wa-green-dark)] transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Nuevo turno
-          </button>
-        </div>
-
-        {/* Week nav */}
-        <div className="bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)] px-3 py-2 flex items-center justify-between flex-shrink-0">
-          <button
-            onClick={() => setWeekStart((w) => addDays(w, -7))}
-            className="p-1.5 rounded hover:bg-[var(--color-wa-hover)] transition-colors"
-          >
-            <svg className="w-5 h-5 text-[var(--color-wa-text-sec)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <span className="text-sm font-medium text-[var(--color-wa-text-main)]">
-            {formatDate(from)} – {formatDate(to)}
-          </span>
-
-          <button
-            onClick={() => setWeekStart((w) => addDays(w, 7))}
-            className="p-1.5 rounded hover:bg-[var(--color-wa-hover)] transition-colors"
-          >
-            <svg className="w-5 h-5 text-[var(--color-wa-text-sec)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* DESKTOP: week grid */}
-        <div className="hidden md:flex flex-1 overflow-hidden">
-          {weekDays.map((dayDate) => {
-            const dayStr = dateToStr(dayDate);
-            const dayAppts = apptsByDay(dayStr);
-            const isToday = dayStr === today;
-            const dayIdx = dayDate.getDay();
-
-            return (
-              <div key={dayStr} className="flex-1 flex flex-col border-r border-[var(--color-wa-sep)] last:border-r-0 min-w-0">
-                {/* Day header */}
-                <div
-                  className={`px-2 py-2 text-center border-b border-[var(--color-wa-sep)] flex-shrink-0 ${
-                    isToday ? "bg-[var(--color-wa-green)]" : "bg-[var(--color-wa-panel-l)]"
-                  }`}
-                >
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${isToday ? "text-white" : "text-[var(--color-wa-text-sec)]"}`}>
-                    {DAY_NAMES[dayIdx]}
-                  </p>
-                  <p className={`text-lg font-bold leading-tight ${isToday ? "text-white" : "text-[var(--color-wa-text-main)]"}`}>
-                    {dayDate.getDate()}
-                  </p>
-                </div>
-
-                {/* Appointments */}
-                <div className="flex-1 overflow-y-auto p-1.5 space-y-1.5">
-                  {loading ? (
-                    <div className="h-8 rounded bg-[var(--color-wa-sep)] animate-pulse" />
-                  ) : dayAppts.length === 0 ? (
-                    <p className="text-center text-xs text-[var(--color-wa-text-sec)] pt-4 opacity-50">Sin turnos</p>
-                  ) : (
-                    dayAppts.map((a) => (
-                      <AppointmentCard
-                        key={a.id}
-                        appointment={a}
-                        onStatusChange={changeStatus}
-                        onDelete={handleDelete}
-                      />
-                    ))
-                  )}
-                  <button
-                    onClick={() => openModal(dayStr)}
-                    className="w-full text-center text-xs text-[var(--color-wa-text-sec)] py-2 rounded hover:bg-[var(--color-wa-hover)] transition-colors opacity-60 hover:opacity-100"
-                  >
-                    + agregar
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* MOBILE: day tabs + list */}
-        <div className="flex md:hidden flex-col flex-1 overflow-hidden">
-          {/* Day tabs */}
-          <div className="flex border-b border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] flex-shrink-0">
-            {weekDays.map((dayDate) => {
-              const dayStr = dateToStr(dayDate);
-              const isToday = dayStr === today;
-              const isSelected = dayStr === selectedDay;
-              const count = apptsByDay(dayStr).length;
-              return (
-                <button
-                  key={dayStr}
-                  onClick={() => setSelectedDay(dayStr)}
-                  className={`flex flex-col items-center flex-1 py-2 border-b-2 transition-colors ${
-                    isSelected
-                      ? "border-[var(--color-wa-green)] text-[var(--color-wa-green)]"
-                      : "border-transparent text-[var(--color-wa-text-sec)]"
-                  }`}
-                >
-                  <span className="text-xs uppercase tracking-wide font-semibold">{DAY_NAMES[dayDate.getDay()]}</span>
-                  <span className={`text-lg font-bold leading-tight ${isToday ? "text-[var(--color-wa-green)]" : ""}`}>{dayDate.getDate()}</span>
-                  {count > 0 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-wa-green)] mt-0.5" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Selected day appointments */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-[var(--color-wa-text-sec)] uppercase tracking-wider">
-                {DAY_NAMES_FULL[new Date(selectedDay + "T12:00:00Z").getUTCDay()]} {formatDate(selectedDay)}
-              </p>
+          <div className="flex items-center gap-2">
+            {/* Toggle Cal/Lista — desktop only */}
+            <div className="hidden md:flex items-center rounded-lg border border-[var(--color-wa-sep)] overflow-hidden text-sm">
               <button
-                onClick={() => openModal(selectedDay)}
-                className="text-sm text-[var(--color-wa-green)] font-semibold"
+                onClick={() => setViewMode("calendar")}
+                className={`px-3 py-1.5 transition-colors ${
+                  viewMode === "calendar"
+                    ? "bg-[var(--color-wa-green)] text-white"
+                    : "text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)]"
+                }`}
               >
-                + Agregar
+                Calendario
+              </button>
+              <button
+                onClick={() => setViewMode("lista")}
+                className={`px-3 py-1.5 transition-colors border-l border-[var(--color-wa-sep)] ${
+                  viewMode === "lista"
+                    ? "bg-[var(--color-wa-green)] text-white"
+                    : "text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)]"
+                }`}
+              >
+                Lista
               </button>
             </div>
+            <button
+              onClick={() => openModal(selectedDay)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[var(--color-wa-green)] text-white text-sm font-semibold rounded-lg hover:bg-[var(--color-wa-green-dark)] transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">Nuevo turno</span>
+            </button>
+          </div>
+        </div>
 
-            {loading ? (
-              <div className="space-y-2">
-                {[1, 2].map((i) => (
-                  <div key={i} className="h-16 rounded-xl bg-[var(--color-wa-sep)] animate-pulse" />
-                ))}
+        {/* Desktop: calendar split OR lista */}
+        <div className="hidden md:flex flex-1 overflow-hidden">
+          {viewMode === "calendar" ? (
+            <>
+              {/* Left: mini calendar */}
+              <div className="w-64 flex-shrink-0 border-r border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] overflow-y-auto">
+                <div className="p-5">
+                  <MiniCalendar {...calendarProps} />
+                </div>
               </div>
-            ) : apptsByDay(selectedDay).length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <svg className="w-12 h-12 text-[var(--color-wa-text-sec)] opacity-20 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-base text-[var(--color-wa-text-sec)]">Sin turnos este día</p>
-              </div>
-            ) : (
-              apptsByDay(selectedDay).map((a) => (
-                <AppointmentCard
-                  key={a.id}
-                  appointment={a}
-                  onStatusChange={changeStatus}
-                  onDelete={handleDelete}
-                />
-              ))
-            )}
+              {/* Right: day panel */}
+              <DayPanel {...dayPanelProps} />
+            </>
+          ) : (
+            <ListaView
+              appointments={appointments}
+              loading={loading}
+              onStatusChange={changeStatus}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
+
+        {/* Mobile: mini calendar + day panel stacked */}
+        <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+          <div className="flex-shrink-0 bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)] px-4 pt-3 pb-4">
+            <MiniCalendar {...calendarProps} compact />
+          </div>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <DayPanel {...dayPanelProps} />
           </div>
         </div>
       </main>
@@ -388,26 +707,24 @@ export default function AppointmentsPage() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
-              {/* Fecha */}
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Fecha</label>
                 <input
                   type="date"
                   value={modalDate}
                   onChange={(e) => setModalDate(e.target.value)}
-                  className="w-full text-base bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
+                  className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
                 />
               </div>
 
-              {/* Recurso */}
               {resources.length > 1 && (
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Recurso</label>
                   <select
                     value={modalResource}
                     onChange={(e) => setModalResource(Number(e.target.value))}
-                    className="w-full text-base bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
+                    className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
                   >
                     {resources.map((r) => (
                       <option key={r.id} value={r.id}>{r.name}</option>
@@ -416,13 +733,12 @@ export default function AppointmentsPage() {
                 </div>
               )}
 
-              {/* Duración */}
               <div>
                 <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Duración</label>
                 <select
                   value={modalDuration}
                   onChange={(e) => setModalDuration(Number(e.target.value))}
-                  className="w-full text-base bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
+                  className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
                 >
                   {[15, 30, 45, 60, 90, 120].map((d) => (
                     <option key={d} value={d}>{d} min</option>
@@ -430,7 +746,6 @@ export default function AppointmentsPage() {
                 </select>
               </div>
 
-              {/* Horario disponible */}
               <div>
                 <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Horario</label>
                 {modalSlots.length === 0 ? (
@@ -456,7 +771,6 @@ export default function AppointmentsPage() {
                 )}
               </div>
 
-              {/* Servicio */}
               <div>
                 <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Servicio (opcional)</label>
                 <input
@@ -464,11 +778,10 @@ export default function AppointmentsPage() {
                   value={modalService}
                   onChange={(e) => setModalService(e.target.value)}
                   placeholder="Ej: Diagnóstico gratuito"
-                  className="w-full text-base bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
+                  className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
                 />
               </div>
 
-              {/* Nombre y teléfono */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Nombre</label>
@@ -477,7 +790,7 @@ export default function AppointmentsPage() {
                     value={modalName}
                     onChange={(e) => setModalName(e.target.value)}
                     placeholder="Nombre"
-                    className="w-full text-base bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
+                    className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
                   />
                 </div>
                 <div>
@@ -487,12 +800,11 @@ export default function AppointmentsPage() {
                     value={modalPhone}
                     onChange={(e) => setModalPhone(e.target.value)}
                     placeholder="+54 9..."
-                    className="w-full text-base bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
+                    className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
                   />
                 </div>
               </div>
 
-              {/* Notas */}
               <div>
                 <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Notas (opcional)</label>
                 <textarea
@@ -500,7 +812,7 @@ export default function AppointmentsPage() {
                   value={modalNotes}
                   onChange={(e) => setModalNotes(e.target.value)}
                   placeholder="Notas internas..."
-                  className="w-full text-base bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] resize-none placeholder:text-[var(--color-wa-text-sec)]"
+                  className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] resize-none placeholder:text-[var(--color-wa-text-sec)]"
                 />
               </div>
             </div>
@@ -508,14 +820,14 @@ export default function AppointmentsPage() {
             <div className="px-5 pb-5 flex gap-2">
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 py-3 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-main)] text-base font-medium rounded-xl hover:bg-[var(--color-wa-hover)] transition-colors"
+                className="flex-1 py-3 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-main)] text-sm font-medium rounded-xl hover:bg-[var(--color-wa-hover)] transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={saveAppointment}
                 disabled={!modalSlot || savingModal}
-                className="flex-1 py-3 bg-[var(--color-wa-green)] text-white text-base font-semibold rounded-xl hover:bg-[var(--color-wa-green-dark)] disabled:opacity-50 transition-colors"
+                className="flex-1 py-3 bg-[var(--color-wa-green)] text-white text-sm font-semibold rounded-xl hover:bg-[var(--color-wa-green-dark)] disabled:opacity-50 transition-colors"
               >
                 {savingModal ? "Guardando…" : "Guardar turno"}
               </button>
@@ -525,103 +837,6 @@ export default function AppointmentsPage() {
       )}
 
       <BottomNav />
-    </div>
-  );
-}
-
-function AppointmentCard({
-  appointment: a,
-  onStatusChange,
-  onDelete,
-}: {
-  appointment: Appointment;
-  onStatusChange: (id: number, status: Appointment["status"]) => void;
-  onDelete: (id: number) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const name = a.contact_name ?? a.contact_phone ?? "Sin nombre";
-
-  return (
-    <div
-      className={`rounded-xl border overflow-hidden ${
-        a.status === "cancelled"
-          ? "opacity-50 border-[var(--color-wa-sep)]"
-          : "border-[var(--color-wa-sep)]"
-      } bg-[var(--color-wa-panel-l)]`}
-    >
-      <button
-        onClick={() => setExpanded((x) => !x)}
-        className="w-full text-left p-3 hover:bg-[var(--color-wa-hover)] transition-colors"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-base font-semibold text-[var(--color-wa-text-main)] truncate">{name}</p>
-            <p className="text-sm text-[var(--color-wa-text-sec)]">
-              {formatTime(a.time_start)} – {formatTime(a.time_end)}
-            </p>
-            {a.service && (
-              <p className="text-sm text-[var(--color-wa-text-sec)] truncate">{a.service}</p>
-            )}
-          </div>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded flex-shrink-0 ${STATUS_STYLES[a.status]}`}>
-            {STATUS_LABELS[a.status]}
-          </span>
-        </div>
-      </button>
-
-      {expanded && (
-        <div className="border-t border-[var(--color-wa-sep)] px-3 py-2.5 space-y-2">
-          {a.contact_phone && (
-            <p className="text-sm text-[var(--color-wa-text-sec)]">Tel: {a.contact_phone}</p>
-          )}
-          {a.notes && (
-            <p className="text-sm text-[var(--color-wa-text-sec)] italic">{a.notes}</p>
-          )}
-          <div className="flex gap-2 flex-wrap">
-            {a.conversation_id !== null && (
-              <Link
-                href={`/?id=${a.conversation_id}`}
-                className="text-sm px-3 py-1.5 flex items-center gap-1.5 border border-[var(--color-wa-green)] text-[var(--color-wa-green)] rounded-lg hover:bg-[var(--color-wa-green)] hover:text-white transition-colors font-medium"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Ir al chat
-              </Link>
-            )}
-            {a.status !== "confirmed" && (
-              <button
-                onClick={() => onStatusChange(a.id, "confirmed")}
-                className="text-sm px-3 py-1.5 bg-[var(--color-wa-green)] text-white rounded-lg font-semibold hover:bg-[var(--color-wa-green-dark)] transition-colors"
-              >
-                Confirmar
-              </button>
-            )}
-            {a.status !== "cancelled" && (
-              <button
-                onClick={() => onStatusChange(a.id, "cancelled")}
-                className="text-sm px-3 py-1.5 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors"
-              >
-                Cancelar
-              </button>
-            )}
-            {a.status === "cancelled" && (
-              <button
-                onClick={() => onStatusChange(a.id, "pending")}
-                className="text-sm px-3 py-1.5 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] rounded-lg hover:bg-[var(--color-wa-hover)] transition-colors"
-              >
-                Reactivar
-              </button>
-            )}
-            <button
-              onClick={() => onDelete(a.id)}
-              className="text-sm px-3 py-1.5 text-red-500 hover:underline"
-            >
-              Eliminar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
