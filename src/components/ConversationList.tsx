@@ -36,8 +36,8 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
 
   return (
     <ul>
-      {conversations.map((c) => (
-        <li key={c.id}>
+      {conversations.map((c, index) => (
+        <li key={c.id} className="animate-in" style={{ animationDelay: `${index * 25}ms` }}>
           <button
             onClick={() => onSelect(c.id)}
             className={`w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-[var(--color-wa-hover)] active:bg-[var(--color-wa-hover)] transition-colors border-b border-[var(--color-wa-sep)] min-h-[64px] ${

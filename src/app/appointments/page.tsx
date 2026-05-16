@@ -217,7 +217,7 @@ function DayAppointmentCard({
 
   return (
     <div
-      className={`flex gap-3 p-3 rounded-xl border border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] transition-opacity ${
+      className={`flex gap-3 p-3 rounded-xl border border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] animate-in shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-150 ${
         a.status === "cancelled" ? "opacity-40" : ""
       }`}
       style={{ borderLeft: `3px solid ${accentColor}` }}
@@ -694,7 +694,7 @@ export default function AppointmentsPage() {
       {/* New appointment modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-[var(--color-wa-panel-l)] rounded-2xl w-full max-w-sm shadow-2xl">
+          <div className="bg-[var(--color-wa-panel-l)] rounded-2xl w-full max-w-sm shadow-2xl animate-modal">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-wa-sep)]">
               <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Nuevo turno</h2>
               <button
