@@ -221,7 +221,7 @@ export default function LeadsPage() {
 
   return (
     <div className="flex h-[calc(100dvh-60px)] md:h-dvh bg-[var(--color-wa-bg-main)]">
-      <Sidebar newLeadsCount={newCount} />
+      <Sidebar />
 
       {/* Center column */}
       <aside className={`
