@@ -97,7 +97,7 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
       {/* List column — full width on mobile, fixed width on md+ */}
       <aside className={`
         ${mobileView === "conversation" ? "hidden" : "flex"} md:flex
-        w-full md:w-[340px] md:flex-shrink-0
+        w-full md:w-[360px] md:flex-shrink-0
         bg-[var(--color-wa-panel-l)] border-r border-[var(--color-wa-sep)] flex-col
       `}>
         <div className="px-4 py-3 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] flex items-center justify-between flex-shrink-0">

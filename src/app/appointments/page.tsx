@@ -141,7 +141,7 @@ function MiniCalendar({
       </div>
 
       {/* Weeks */}
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-1">
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 gap-0.5">
             {week.map((dayStr, di) => {
@@ -158,7 +158,7 @@ function MiniCalendar({
                     compact ? "py-1.5 text-xs" : "py-2 text-sm"
                   } font-medium ${
                     isSelected
-                      ? "bg-[var(--color-wa-green)] text-white"
+                      ? "bg-blue-500 text-white"
                       : isToday
                       ? "ring-2 ring-[var(--color-wa-green)] text-[var(--color-wa-green)] font-bold"
                       : "text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)]"
@@ -166,7 +166,7 @@ function MiniCalendar({
                 >
                   {dayNum}
                   {hasDot && !isSelected && (
-                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--color-wa-green)]" />
+                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-300" />
                   )}
                 </button>
               );
@@ -177,13 +177,13 @@ function MiniCalendar({
 
       {/* Legend — only on desktop */}
       {!compact && (
-        <div className="flex flex-col gap-1.5 pt-3 mt-1 border-t border-[var(--color-wa-sep)]">
+        <div className="flex gap-4 pt-3 mt-1 border-t border-[var(--color-wa-sep)] flex-wrap">
           <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
-            <span className="w-2 h-2 rounded-full bg-[var(--color-wa-green)]" />
+            <span className="w-2 h-2 rounded-full bg-blue-300" />
             Tiene turnos
           </div>
           <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
-            <span className="w-4 h-4 rounded-lg bg-[var(--color-wa-green)] flex items-center justify-center">
+            <span className="w-4 h-4 rounded-lg bg-blue-500 flex items-center justify-center">
               <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
@@ -661,9 +661,11 @@ export default function AppointmentsPage() {
           {viewMode === "calendar" ? (
             <>
               {/* Left: mini calendar */}
-              <div className="w-64 flex-shrink-0 border-r border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] overflow-y-auto">
-                <div className="p-5">
-                  <MiniCalendar {...calendarProps} />
+              <div className="w-64 flex-shrink-0 border-r border-[var(--color-wa-sep)] bg-[var(--color-wa-bg-main)] overflow-y-auto">
+                <div className="p-4">
+                  <div className="bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+                    <MiniCalendar {...calendarProps} />
+                  </div>
                 </div>
               </div>
               {/* Right: day panel */}

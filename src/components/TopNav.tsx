@@ -58,28 +58,27 @@ export function TopNav() {
       </div>
 
       {/* Center: tabs */}
-      <nav className="flex-1 flex items-stretch justify-center">
-        {TABS.map((tab) => {
-          const isActive = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              title={tab.label}
-              className={`relative flex items-center gap-2 px-4 text-sm font-medium transition-colors ${
-                isActive
-                  ? "text-[var(--color-wa-green)]"
-                  : "text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)]"
-              }`}
-            >
-              {tab.icon}
-              <span className="hidden md:block">{tab.label}</span>
-              {isActive && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-[var(--color-wa-green)]" />
-              )}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 flex items-center justify-center">
+        <div className="inline-flex items-center bg-[#f1f3f4] dark:bg-[var(--color-wa-hover)] rounded-xl p-1 gap-0.5">
+          {TABS.map((tab) => {
+            const isActive = pathname === tab.href;
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                title={tab.label}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  isActive
+                    ? "bg-white text-[var(--color-wa-text-main)] shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab.icon}
+                <span className="hidden md:block">{tab.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Right: logout */}
