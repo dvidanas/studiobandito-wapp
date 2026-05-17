@@ -92,15 +92,16 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
   return (
     <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
       <TopNav />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden md:p-3 md:gap-3">
 
-      {/* List column — full width on mobile, fixed width on md+ */}
+      {/* List column — full width on mobile, card on md+ */}
       <aside className={`
         ${mobileView === "conversation" ? "hidden" : "flex"} md:flex
         w-full md:w-[360px] md:flex-shrink-0
-        bg-[var(--color-wa-panel-l)] border-r border-[var(--color-wa-sep)] flex-col
+        bg-white dark:bg-[var(--color-wa-panel-l)] flex-col
+        md:rounded-2xl md:shadow-[0_1px_4px_rgba(0,0,0,0.08)] md:overflow-hidden
       `}>
-        <div className="px-4 py-3 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] flex items-center justify-between flex-shrink-0">
+        <div className="px-4 py-3 border-b border-[var(--color-wa-sep)] flex items-center justify-between flex-shrink-0">
           <div>
             <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Mensajes</h2>
             {connectionStatus.phone && (
@@ -149,10 +150,11 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
         </div>
       </aside>
 
-      {/* 3. Panel column — full width on mobile, flex-1 on md+ */}
+      {/* Panel column — full width on mobile, card flex-1 on md+ */}
       <main className={`
         ${mobileView === "list" ? "hidden" : "flex"} md:flex
-        flex-1 bg-[var(--color-wa-panel-r)] flex-col
+        flex-1 bg-white dark:bg-[var(--color-wa-panel-r)] flex-col
+        md:rounded-2xl md:shadow-[0_1px_4px_rgba(0,0,0,0.08)] md:overflow-hidden
       `}>
         {selectedConversation ? (
           <ConversationPanel
@@ -163,8 +165,8 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
             onBack={handleBack}
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center px-8 border-b-[6px] border-[var(--color-wa-green)]">
-            <div className="w-[200px] sm:w-[320px] mb-8">
+          <div className="flex flex-col items-center justify-center h-full text-center px-8">
+            <div className="w-[200px] sm:w-[280px] mb-8">
               <svg viewBox="0 0 100 100" className="w-full text-[var(--color-wa-text-sec)] opacity-20">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" />
                 <path d="M50 25v25l15 15" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />

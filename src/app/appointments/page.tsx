@@ -613,7 +613,7 @@ export default function AppointmentsPage() {
 
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] px-4 py-3 flex items-center justify-between flex-shrink-0">
+        <div className="px-4 py-3 flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-base font-semibold text-[var(--color-wa-text-main)]">Turnos</h1>
             <p className="text-sm text-[var(--color-wa-text-sec)]">
@@ -657,27 +657,29 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Desktop: calendar split OR lista */}
-        <div className="hidden md:flex flex-1 overflow-hidden">
+        <div className="hidden md:flex flex-1 overflow-hidden p-3 gap-3">
           {viewMode === "calendar" ? (
             <>
-              {/* Left: mini calendar */}
-              <div className="w-64 flex-shrink-0 border-r border-[var(--color-wa-sep)] bg-[var(--color-wa-bg-main)] overflow-y-auto">
-                <div className="p-4">
-                  <div className="bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
-                    <MiniCalendar {...calendarProps} />
-                  </div>
+              {/* Left: mini calendar card */}
+              <div className="w-64 flex-shrink-0 overflow-y-auto">
+                <div className="bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+                  <MiniCalendar {...calendarProps} />
                 </div>
               </div>
-              {/* Right: day panel */}
-              <DayPanel {...dayPanelProps} />
+              {/* Right: day panel card */}
+              <div className="flex-1 bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
+                <DayPanel {...dayPanelProps} />
+              </div>
             </>
           ) : (
-            <ListaView
-              appointments={appointments}
-              loading={loading}
-              onStatusChange={changeStatus}
-              onDelete={handleDelete}
-            />
+            <div className="flex-1 bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
+              <ListaView
+                appointments={appointments}
+                loading={loading}
+                onStatusChange={changeStatus}
+                onDelete={handleDelete}
+              />
+            </div>
           )}
         </div>
 

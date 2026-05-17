@@ -617,14 +617,14 @@ export default function SettingsPage() {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] flex-shrink-0">
+        <div className="px-5 py-4 flex-shrink-0">
           <h1 className="text-lg font-bold text-[var(--color-wa-text-main)]">Configuración</h1>
           <p className="text-sm text-[var(--color-wa-text-sec)] mt-0.5">Personalizá la aplicación y el negocio</p>
         </div>
 
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 md:px-3 md:pb-3 md:gap-3">
           {/* Sidebar de tabs — visible en md+ */}
-          <nav className="hidden md:flex flex-col w-48 lg:w-56 border-r border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] py-3 gap-0.5 px-2 flex-shrink-0">
+          <nav className="hidden md:flex flex-col w-48 lg:w-56 bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] py-3 gap-0.5 px-2 flex-shrink-0 overflow-y-auto">
             {TABS.map((t) => (
               <button
                 key={t.key}
@@ -642,7 +642,7 @@ export default function SettingsPage() {
           </nav>
 
           {/* Tabs móvil — barra horizontal */}
-          <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex flex-col flex-1 min-w-0 md:bg-white md:dark:bg-[var(--color-wa-panel-l)] md:rounded-2xl md:shadow-[0_1px_4px_rgba(0,0,0,0.08)] md:overflow-hidden">
             <div className="md:hidden flex border-b border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] flex-shrink-0 overflow-x-auto">
               {TABS.map((t) => (
                 <button
