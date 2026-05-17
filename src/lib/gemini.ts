@@ -28,7 +28,7 @@ export async function getChatCompletion(
   history: ChatMessage[],
   extraInstruction?: string
 ): Promise<string> {
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
   const apiKey = process.env.GEMINI_API_KEY!;
   console.log("[llm] usando modelo:", model);
 
