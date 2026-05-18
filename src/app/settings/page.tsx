@@ -616,13 +616,7 @@ export default function SettingsPage() {
       <TopNav />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <div className="px-5 py-4 flex-shrink-0">
-          <h1 className="text-lg font-bold text-[var(--color-wa-text-main)]">Configuración</h1>
-          <p className="text-sm text-[var(--color-wa-text-sec)] mt-0.5">Personalizá la aplicación y el negocio</p>
-        </div>
-
-        <div className="flex flex-1 min-h-0 md:px-3 md:pb-3 md:gap-3">
+        <div className="flex flex-1 min-h-0 md:p-3 md:gap-3">
           {/* Sidebar de tabs — visible en md+ */}
           <nav className="hidden md:flex flex-col w-[350px] bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] py-3 gap-0.5 px-2 flex-shrink-0 overflow-y-auto">
             {TABS.map((t) => (

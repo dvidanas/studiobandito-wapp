@@ -612,52 +612,8 @@ export default function AppointmentsPage() {
       <TopNav />
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="px-4 py-3 flex items-center justify-between flex-shrink-0">
-          <div>
-            <h1 className="text-base font-semibold text-[var(--color-wa-text-main)]">Turnos</h1>
-            <p className="text-sm text-[var(--color-wa-text-sec)]">
-              {stats.pending} pendientes · {stats.confirmed} confirmados
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Toggle Cal/Lista — desktop only */}
-            <div className="hidden md:flex items-center rounded-lg border border-[var(--color-wa-sep)] overflow-hidden text-sm">
-              <button
-                onClick={() => setViewMode("calendar")}
-                className={`px-3 py-1.5 transition-colors ${
-                  viewMode === "calendar"
-                    ? "bg-[var(--color-wa-green)] text-white"
-                    : "text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)]"
-                }`}
-              >
-                Calendario
-              </button>
-              <button
-                onClick={() => setViewMode("lista")}
-                className={`px-3 py-1.5 transition-colors border-l border-[var(--color-wa-sep)] ${
-                  viewMode === "lista"
-                    ? "bg-[var(--color-wa-green)] text-white"
-                    : "text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)]"
-                }`}
-              >
-                Lista
-              </button>
-            </div>
-            <button
-              onClick={() => openModal(selectedDay)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[var(--color-wa-green)] text-white text-sm font-semibold rounded-lg hover:bg-[var(--color-wa-green-dark)] transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="hidden sm:inline">Nuevo turno</span>
-            </button>
-          </div>
-        </div>
-
         {/* Desktop: calendar split OR lista */}
-        <div className="hidden md:flex flex-1 overflow-hidden p-3 gap-3">
+        <div className="hidden md:flex flex-1 overflow-hidden md:p-3 md:gap-3">
           {viewMode === "calendar" ? (
             <>
               {/* Left: mini calendar card */}

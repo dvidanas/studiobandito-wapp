@@ -221,13 +221,14 @@ export default function LeadsPage() {
   return (
     <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
       <TopNav />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden md:p-3 md:gap-3">
 
       {/* Center column */}
       <aside className={`
         ${mobileView === "detail" ? "hidden" : "flex"} md:flex
         w-full md:w-[350px] md:flex-shrink-0
-        bg-[var(--color-wa-panel-l)] border-r border-[var(--color-wa-sep)] flex-col
+        bg-white dark:bg-[var(--color-wa-panel-l)] flex-col
+        md:rounded-2xl md:shadow-[0_1px_4px_rgba(0,0,0,0.08)] md:overflow-hidden
       `}>
         <div className="px-4 py-3 bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)]">
           <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Leads</h2>
@@ -290,7 +291,8 @@ export default function LeadsPage() {
       {/* Right column: detail */}
       <main className={`
         ${mobileView === "list" ? "hidden" : "flex"} md:flex
-        flex-1 bg-[var(--color-wa-panel-r)] flex-col overflow-y-auto
+        flex-1 bg-white dark:bg-[var(--color-wa-panel-r)] flex-col overflow-y-auto
+        md:rounded-2xl md:shadow-[0_1px_4px_rgba(0,0,0,0.08)] md:overflow-hidden
       `}>
         {!selectedLead ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
