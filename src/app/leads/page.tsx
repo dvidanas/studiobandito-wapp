@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { TopNav } from "@/components/TopNav";
+import { KanbanBoard } from "@/components/KanbanBoard";
 
 interface Lead {
   id: number;
@@ -102,6 +103,7 @@ export default function LeadsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("kanban");
 
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -221,7 +223,21 @@ export default function LeadsPage() {
   return (
     <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
       <TopNav />
+      <div className="px-5 py-3 flex flex-wrap gap-3 items-center justify-between border-b border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)]">
+        <div>
+          <h1 className="text-lg font-semibold text-[var(--color-wa-text-main)]">Gestión de Leads</h1>
+          <p className="text-sm text-[var(--color-wa-text-sec)]">{leads.length} contactos en total</p>
+        </div>
+        <div className="flex bg-[var(--color-wa-bg-main)] rounded-lg p-1 border border-[var(--color-wa-sep)]">
+          <button onClick={() => setViewMode('list')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'list' ? 'bg-white dark:bg-[var(--color-wa-panel-l)] shadow text-[var(--color-wa-text-main)]' : 'text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)]'}`}>Lista</button>
+          <button onClick={() => setViewMode('kanban')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${viewMode === 'kanban' ? 'bg-white dark:bg-[var(--color-wa-panel-l)] shadow text-[var(--color-wa-text-main)]' : 'text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)]'}`}>Tablero</button>
+        </div>
+      </div>
       <div className="flex flex-1 overflow-hidden md:p-3 md:gap-3">
+        {viewMode === 'kanban' ? (
+          <KanbanBoard leads={leads} onSelectLead={handleSelectLead} onStatusChange={changeStatus} />
+        ) : (
+          <>
 
       {/* Center column */}
       <aside className={`
@@ -560,6 +576,8 @@ export default function LeadsPage() {
         )}
       </main>
 
+      </>
+      )}
       </div>
     </div>
   );

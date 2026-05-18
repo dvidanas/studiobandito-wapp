@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ConnectionGate } from "@/components/ConnectionGate";
@@ -36,12 +36,76 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
   const [mobileView, setMobileView] = useState<"list" | "conversation">(() =>
     searchParams.get("id") ? "conversation" : "list"
   );
+  
+  const prevConversations = useRef<Conversation[]>([]);
+  
+  // Request Notification permission
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+  
+  // Play sound function
+  const playAlertSound = useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+      oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+      console.error("Audio API no soportada", e);
+    }
+  }, []);
 
   const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch("/api/conversations");
       if (res.ok) {
-        const data = await res.json();
+        const data: Conversation[] = await res.json();
+        
+        // Check for updates to trigger notifications
+        if (prevConversations.current.length > 0) {
+          for (const conv of data) {
+            const prev = prevConversations.current.find(p => p.id === conv.id);
+            if (prev) {
+              // Notification: AI handed over to Human
+              if (prev.mode === "AI" && conv.mode === "HUMAN") {
+                playAlertSound();
+                if ("Notification" in window && Notification.permission === "granted") {
+                  new Notification("Asistencia Requerida", {
+                    body: `La IA ha derivado a un humano en el chat con ${conv.name ?? "+" + conv.phone}`,
+                    icon: "/favicon.ico"
+                  });
+                }
+              }
+              // Notification: New message in Human mode
+              else if (conv.mode === "HUMAN" && conv.last_message_at !== prev.last_message_at && conv.last_message_at) {
+                playAlertSound();
+                if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
+                  new Notification("Nuevo Mensaje", {
+                    body: `Nuevo mensaje de ${conv.name ?? "+" + conv.phone}`,
+                    icon: "/favicon.ico"
+                  });
+                }
+              }
+            }
+          }
+        }
+        
+        prevConversations.current = data;
         setConversations(data);
       }
     } catch {
