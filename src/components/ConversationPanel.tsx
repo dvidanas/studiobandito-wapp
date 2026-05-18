@@ -126,10 +126,7 @@ export function ConversationPanel({ conversation, onModeChange, onDelete, onBack
               </svg>
             </button>
           )}
-          <div className="w-10 h-10 rounded-full bg-[var(--color-wa-sep)] flex items-center justify-center text-sm font-semibold text-[var(--color-wa-text-sec)] flex-shrink-0">
-            {(conversation.name ?? conversation.phone).slice(0, 1).toUpperCase()}
-          </div>
-          <div className="min-w-0">
+          <div className="flex flex-col">
             <p className="text-base font-medium text-[var(--color-wa-text-main)] truncate">
               {conversation.name ?? `+${conversation.phone}`}
             </p>

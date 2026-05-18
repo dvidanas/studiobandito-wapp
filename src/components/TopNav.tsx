@@ -3,8 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clientConfig } from "@/lib/client.config";
 
-const initials = clientConfig.businessName.charAt(0).toUpperCase();
-
 const TABS = [
   {
     href: "/",
@@ -46,12 +44,9 @@ export function TopNav() {
 
   return (
     <header className="h-14 flex-shrink-0 flex items-stretch bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] z-40">
-      {/* Left: avatar + name */}
-      <div className="flex items-center gap-2.5 px-4 flex-shrink-0">
-        <div className="w-8 h-8 rounded-full bg-[var(--color-wa-green)] flex items-center justify-center text-[var(--color-wa-green-text)] font-bold text-sm flex-shrink-0">
-          {initials}
-        </div>
-        <div className="hidden sm:flex flex-col leading-none">
+      {/* Left: name */}
+      <div className="flex items-center px-4 flex-shrink-0">
+        <div className="flex flex-col leading-none">
           <span className="text-sm font-bold text-[var(--color-wa-text-main)]">{clientConfig.businessName}</span>
           <span className="text-[10px] text-[var(--color-wa-text-sec)] mt-0.5">Panel de gestión</span>
         </div>

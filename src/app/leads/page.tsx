@@ -254,9 +254,7 @@ export default function LeadsPage() {
                         selectedId === lead.id ? "bg-[var(--color-wa-hover)]" : ""
                       }`}
                     >
-                      <div className={`w-11 h-11 rounded-full ${tempAvatarBg(sm?.temperatura)} flex items-center justify-center flex-shrink-0 text-base font-bold ${tempAvatarText(sm?.temperatura)}`}>
-                        {displayName(lead).slice(0, 1).toUpperCase()}
-                      </div>
+                      {/* Avatar Removed */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center gap-1">
                           <span className="text-base font-medium text-[var(--color-wa-text-main)] truncate">
@@ -325,9 +323,7 @@ export default function LeadsPage() {
             {/* HEADER */}
             <div className="bg-[var(--color-wa-panel-l)] rounded-xl border border-[var(--color-wa-sep)] p-5 flex items-start justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-full ${tempAvatarBg(summary?.temperatura)} flex items-center justify-center text-xl font-bold ${tempAvatarText(summary?.temperatura)} flex-shrink-0`}>
-                  {displayName(selectedLead).slice(0, 1).toUpperCase()}
-                </div>
+                {/* Avatar Removed */}
                 <div>
                   <h2 className="text-lg font-semibold text-[var(--color-wa-text-main)] leading-tight">
                     {displayName(selectedLead)}

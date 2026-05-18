@@ -44,10 +44,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
               selectedId === c.id ? "bg-[var(--color-wa-hover)]" : ""
             }`}
           >
-            {/* Avatar */}
-            <div className="w-12 h-12 rounded-full bg-[var(--color-wa-sep)] flex items-center justify-center flex-shrink-0 text-sm font-semibold text-[var(--color-wa-text-sec)]">
-              {(c.name ?? c.phone).slice(0, 1).toUpperCase()}
-            </div>
+            {/* Avatar Removed */}
 
             {/* Info */}
             <div className="flex-1 min-w-0 flex flex-col justify-center">
