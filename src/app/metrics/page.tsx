@@ -39,15 +39,15 @@ export default function MetricsPage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-32 bg-[var(--color-wa-panel-l)] rounded-2xl border border-[var(--color-wa-sep)] animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 bg-[var(--color-wa-panel-l)] rounded-2xl border border-[var(--color-wa-sep)] animate-pulse" />
             ))}
           </div>
         ) : data && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Card 1 */}
-            <div className="bg-[var(--color-wa-panel-l)] p-5 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
+            <div className="bg-[var(--color-wa-panel-l)] p-4 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -56,14 +56,14 @@ export default function MetricsPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-[var(--color-wa-text-sec)] uppercase tracking-wider">Total Leads</h3>
               </div>
-              <p className="text-3xl font-bold text-[var(--color-wa-text-main)]">{data.totalLeads}</p>
+              <p className="text-2xl font-bold text-[var(--color-wa-text-main)] mt-1">{data.totalLeads}</p>
               <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
                 <span>+12% esta semana</span>
               </p>
             </div>
 
             {/* Card 2 */}
-            <div className="bg-[var(--color-wa-panel-l)] p-5 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
+            <div className="bg-[var(--color-wa-panel-l)] p-4 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -72,14 +72,14 @@ export default function MetricsPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-[var(--color-wa-text-sec)] uppercase tracking-wider">Turnos Agendados</h3>
               </div>
-              <p className="text-3xl font-bold text-[var(--color-wa-text-main)]">{data.totalAppointments}</p>
+              <p className="text-2xl font-bold text-[var(--color-wa-text-main)] mt-1">{data.totalAppointments}</p>
               <p className="text-xs text-[var(--color-wa-text-sec)] mt-1 flex items-center gap-1">
                 Tasa de conversión: <span className="font-semibold text-[var(--color-wa-text-main)]">{data.conversionRate}%</span>
               </p>
             </div>
 
             {/* Card 3 */}
-            <div className="bg-[var(--color-wa-panel-l)] p-5 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
+            <div className="bg-[var(--color-wa-panel-l)] p-4 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-[var(--color-wa-bg-main)] flex items-center justify-center text-[var(--color-wa-text-main)]">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -88,12 +88,12 @@ export default function MetricsPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-[var(--color-wa-text-sec)] uppercase tracking-wider">Mensajes por IA</h3>
               </div>
-              <p className="text-3xl font-bold text-[var(--color-wa-text-main)]">{data.aiMessagesHandled}</p>
+              <p className="text-2xl font-bold text-[var(--color-wa-text-main)] mt-1">{data.aiMessagesHandled}</p>
               <p className="text-xs text-[var(--color-wa-text-sec)] mt-1">Automatizado sin intervención</p>
             </div>
 
             {/* Card 4 */}
-            <div className="bg-[var(--color-wa-panel-l)] p-5 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
+            <div className="bg-[var(--color-wa-panel-l)] p-4 rounded-2xl border border-[var(--color-wa-sep)] shadow-sm">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -102,7 +102,7 @@ export default function MetricsPage() {
                 </div>
                 <h3 className="text-sm font-semibold text-[var(--color-wa-text-sec)] uppercase tracking-wider">Intervenciones Manuales</h3>
               </div>
-              <p className="text-3xl font-bold text-[var(--color-wa-text-main)]">{data.humanInterventions}</p>
+              <p className="text-2xl font-bold text-[var(--color-wa-text-main)] mt-1">{data.humanInterventions}</p>
               <p className="text-xs text-amber-500 mt-1">Chats tomados por un humano</p>
             </div>
           </div>
