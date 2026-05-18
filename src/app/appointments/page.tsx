@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { TopNav } from "@/components/TopNav";
+import { TopNav, BottomNav } from "@/components/TopNav";
 
 interface Appointment {
   id: number;
@@ -839,6 +839,7 @@ export default function AppointmentsPage() {
         </div>
       )}
 
+      <BottomNav />
     </div>
   );
 }

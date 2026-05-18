@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ConnectionGate } from "@/components/ConnectionGate";
-import { TopNav } from "@/components/TopNav";
+import { TopNav, BottomNav } from "@/components/TopNav";
 import { ConversationList } from "@/components/ConversationList";
 import { ConversationPanel } from "@/components/ConversationPanel";
 
@@ -183,6 +183,7 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
       </main>
 
       </div>
+      <BottomNav />
     </div>
   );
 }

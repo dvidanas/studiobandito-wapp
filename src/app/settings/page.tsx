@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { TopNav } from "@/components/TopNav";
+import { TopNav, BottomNav } from "@/components/TopNav";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -675,6 +675,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <BottomNav />
     </div>
   );
 }

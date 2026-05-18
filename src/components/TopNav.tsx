@@ -57,8 +57,8 @@ export function TopNav() {
         </div>
       </div>
 
-      {/* Center: tabs */}
-      <nav className="flex-1 flex items-center justify-center">
+      {/* Center: tabs — desktop only */}
+      <nav className="flex-1 hidden md:flex items-center justify-center">
         <div className="inline-flex items-center bg-[#f1f3f4] dark:bg-[var(--color-wa-hover)] rounded-xl p-1 gap-0.5">
           {TABS.map((tab) => {
             const isActive = pathname === tab.href;
@@ -94,5 +94,33 @@ export function TopNav() {
         </button>
       </div>
     </header>
+  );
+}
+
+export function BottomNav() {
+  const pathname = usePathname();
+  return (
+    <nav
+      className="md:hidden flex-shrink-0 bg-white dark:bg-[var(--color-wa-panel-l)] border-t border-[var(--color-wa-sep)] flex items-stretch"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      {TABS.map((tab) => {
+        const isActive = pathname === tab.href;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={`flex flex-col items-center justify-center gap-1 flex-1 py-2.5 transition-colors ${
+              isActive
+                ? "text-[var(--color-wa-green)]"
+                : "text-[var(--color-wa-text-sec)]"
+            }`}
+          >
+            {tab.icon}
+            <span className="text-[10px] font-semibold tracking-wide">{tab.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
