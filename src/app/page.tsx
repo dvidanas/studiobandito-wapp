@@ -175,7 +175,7 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${connectionStatus.status === "connected" ? "bg-[var(--color-wa-green)]" : "bg-red-500"}`} />
+            <span className={`w-2.5 h-2.5 rounded-full ${connectionStatus.status === "connected" ? "bg-green-500" : "bg-red-500"}`} />
           </div>
         </div>
 
