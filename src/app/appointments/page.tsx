@@ -161,7 +161,7 @@ function MiniCalendar({
                     isSelected
                       ? "bg-[#6ea8fe] text-white shadow-sm"
                       : isToday
-                      ? "ring-2 ring-[var(--color-wa-green)] text-[var(--color-wa-green)] font-bold"
+                      ? "border-[1.5px] border-[var(--color-wa-green)] text-[var(--color-wa-green)] font-bold"
                       : "text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)]"
                   }`}
                 >
@@ -192,7 +192,7 @@ function MiniCalendar({
             Seleccionado
           </div>
           <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
-            <span className="w-4 h-4 rounded-full ring-2 ring-[var(--color-wa-green)] flex items-center justify-center"></span>
+            <span className="w-4 h-4 rounded-full border-[1.5px] border-[var(--color-wa-green)] flex items-center justify-center"></span>
             Hoy
           </div>
         </div>
