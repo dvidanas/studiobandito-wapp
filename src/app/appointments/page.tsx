@@ -155,11 +155,11 @@ function MiniCalendar({
                 <button
                   key={di}
                   onClick={() => onSelectDay(dayStr)}
-                  className={`relative flex flex-col items-center justify-center w-full rounded-lg transition-all ${
-                    compact ? "py-1.5 text-xs" : "py-2 text-sm"
+                  className={`relative flex flex-col items-center justify-center w-8 h-8 mx-auto rounded-full transition-all ${
+                    compact ? "text-xs" : "text-sm"
                   } font-medium ${
                     isSelected
-                      ? "bg-blue-500 text-[var(--color-wa-green-text)]"
+                      ? "bg-[#6ea8fe] text-white shadow-sm"
                       : isToday
                       ? "ring-2 ring-[var(--color-wa-green)] text-[var(--color-wa-green)] font-bold"
                       : "text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)]"
@@ -184,15 +184,15 @@ function MiniCalendar({
             Tiene turnos
           </div>
           <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
-            <span className="w-4 h-4 rounded-lg bg-blue-500 flex items-center justify-center">
-              <svg className="w-2.5 h-2.5 text-[var(--color-wa-green-text)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <span className="w-4 h-4 rounded-full bg-[#6ea8fe] flex items-center justify-center">
+              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </span>
             Seleccionado
           </div>
           <div className="flex items-center gap-2 text-xs text-[var(--color-wa-text-sec)]">
-            <span className="w-4 h-4 rounded-lg ring-2 ring-[var(--color-wa-green)] flex items-center justify-center text-[var(--color-wa-green)] text-[10px] font-bold">h</span>
+            <span className="w-4 h-4 rounded-full ring-2 ring-[var(--color-wa-green)] flex items-center justify-center"></span>
             Hoy
           </div>
         </div>
