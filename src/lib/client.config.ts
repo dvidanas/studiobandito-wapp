@@ -1,5 +1,6 @@
 export const clientConfig = {
   name: "Studio Bandito",
+  businessName: "Studio Bandito",
   slogan: "",
   address: "Tucumán 1106 sur, Capital, San Juan",
   phone: "2646230305",
