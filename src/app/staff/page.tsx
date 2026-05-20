@@ -153,7 +153,7 @@ export default function StaffPage() {
       <div className="flex-1 flex min-h-0 md:p-3 md:gap-3 overflow-hidden">
 
         {/* Left sidebar */}
-        <aside className="w-full md:w-[300px] flex-shrink-0 flex flex-col bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-hidden border-r md:border border-[var(--color-wa-sep)]" style={{ boxShadow: "var(--shadow-card)" }}>
+        <aside className="w-full md:w-[350px] flex-shrink-0 flex flex-col bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-hidden border-r md:border border-[var(--color-wa-sep)]" style={{ boxShadow: "var(--shadow-card)" }}>
 
           <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
             <span className="text-[11px] font-semibold tracking-widest uppercase text-[var(--color-wa-text-sec)]">Personal</span>

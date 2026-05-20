@@ -254,7 +254,7 @@ export default function ServicesPage() {
       <div className="flex-1 flex min-h-0 md:p-3 md:gap-3 overflow-hidden">
 
         {/* Left sidebar */}
-        <aside className="w-full md:w-[340px] flex-shrink-0 flex flex-col bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-hidden border-r md:border border-[var(--color-wa-sep)]" style={{ boxShadow: "var(--shadow-card)" }}>
+        <aside className="w-full md:w-[350px] flex-shrink-0 flex flex-col bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-hidden border-r md:border border-[var(--color-wa-sep)]" style={{ boxShadow: "var(--shadow-card)" }}>
           <div className="flex-1 overflow-y-auto">
 
             {/* Servicios */}
