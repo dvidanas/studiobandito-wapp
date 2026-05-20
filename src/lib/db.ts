@@ -168,6 +168,21 @@ function migrate(db: Database.Database) {
     db.exec("ALTER TABLE leads ADD COLUMN summary TEXT");
   } catch { /* ya existe */ }
 
+  try {
+    db.exec("ALTER TABLE resources ADD COLUMN phone TEXT");
+  } catch { /* ya existe */ }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS promotions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      discount TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+  `);
+
   // Renombrar recurso "Principal" → "Daniel" y eliminar "Sol"
   db.prepare("UPDATE resources SET name = 'Daniel' WHERE name = 'Principal'").run();
   const solRes = db.prepare<[], { id: number; count: number }>(
@@ -450,6 +465,7 @@ interface AppointmentsConfig {
 export interface Resource {
   id: number;
   name: string;
+  phone: string | null;
   active: number;
 }
 
@@ -725,20 +741,59 @@ export function deleteService(id: number): void {
   getDb().prepare("DELETE FROM services WHERE id = ?").run(id);
 }
 
+// ── Promotions ──────────────────────────────────────────────
+
+export interface Promotion {
+  id: number;
+  title: string;
+  description: string | null;
+  discount: string | null;
+  active: number;
+  created_at: number;
+}
+
+export function listPromotions(includeInactive = false): Promotion[] {
+  const query = includeInactive
+    ? "SELECT * FROM promotions ORDER BY created_at DESC"
+    : "SELECT * FROM promotions WHERE active = 1 ORDER BY created_at DESC";
+  return getDb().prepare<[], Promotion>(query).all();
+}
+
+export function createPromotion(data: { title: string; description?: string | null; discount?: string | null }): number {
+  const res = getDb()
+    .prepare("INSERT INTO promotions (title, description, discount) VALUES (?, ?, ?)")
+    .run(data.title, data.description ?? null, data.discount ?? null);
+  return res.lastInsertRowid as number;
+}
+
+export function updatePromotion(id: number, data: Partial<Pick<Promotion, "title" | "description" | "discount" | "active">>): void {
+  const entries = Object.entries(data).filter(([, v]) => v !== undefined);
+  if (!entries.length) return;
+  const fields = entries.map(([k]) => `${k} = ?`).join(", ");
+  const values = entries.map(([, v]) => v);
+  getDb().prepare(`UPDATE promotions SET ${fields} WHERE id = ?`).run(...values, id);
+}
+
+export function deletePromotion(id: number): void {
+  getDb().prepare("DELETE FROM promotions WHERE id = ?").run(id);
+}
+
 // ── Resources CRUD ──────────────────────────────────────────
 
 export function listAllResources(): Resource[] {
   return getDb().prepare<[], Resource>("SELECT * FROM resources ORDER BY id").all();
 }
 
-export function createResource(name: string): number {
-  const res = getDb().prepare("INSERT INTO resources (name) VALUES (?)").run(name);
+export function createResource(name: string, phone?: string | null): number {
+  const res = getDb().prepare("INSERT INTO resources (name, phone) VALUES (?, ?)").run(name, phone ?? null);
   return res.lastInsertRowid as number;
 }
 
-export function updateResource(id: number, data: { name?: string; active?: number }): void {
-  const fields = Object.entries(data).map(([k]) => `${k} = ?`).join(", ");
-  const values = Object.values(data);
+export function updateResource(id: number, data: { name?: string; phone?: string | null; active?: number }): void {
+  const entries = Object.entries(data).filter(([, v]) => v !== undefined);
+  if (!entries.length) return;
+  const fields = entries.map(([k]) => `${k} = ?`).join(", ");
+  const values = entries.map(([, v]) => v);
   getDb().prepare(`UPDATE resources SET ${fields} WHERE id = ?`).run(...values, id);
 }
 

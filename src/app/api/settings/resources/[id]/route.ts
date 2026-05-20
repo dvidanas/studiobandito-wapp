@@ -12,10 +12,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  if (body.name !== undefined || body.active !== undefined) {
+  if (body.name !== undefined || body.active !== undefined || body.phone !== undefined) {
     updateResource(Number(id), {
-      name: body.name?.trim(),
-      active: body.active !== undefined ? Number(body.active) : undefined,
+      ...(body.name !== undefined && { name: body.name?.trim() }),
+      ...(body.phone !== undefined && { phone: body.phone }),
+      ...(body.active !== undefined && { active: Number(body.active) }),
     });
   }
   if (Array.isArray(body.availability)) {
