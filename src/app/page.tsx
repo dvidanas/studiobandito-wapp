@@ -237,7 +237,7 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
               </svg>
             </div>
             <h1 className="text-2xl sm:text-3xl font-light text-[var(--color-wa-text-main)] mb-4">
-              Feer WhatsApp Agent
+              Amalia, asistente de Studio Bandito
             </h1>
             <p className="text-sm text-[var(--color-wa-text-sec)] max-w-md">
               Seleccioná un chat para ver los mensajes.
