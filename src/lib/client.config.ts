@@ -52,7 +52,7 @@ export const clientConfig = {
   botName: "Amalia",
   botBooking: true,
   appointmentDuration: 40,
-  loginPin: "0000",
+  loginPin: "0305",
 
   responseDelayMs: 8000,
   appointments: {

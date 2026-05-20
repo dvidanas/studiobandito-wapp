@@ -1,34 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import crypto from "node:crypto";
 import { createSessionCookie, COOKIE_NAME, COOKIE_MAX_AGE } from "@/lib/auth";
+import { clientConfig } from "@/lib/client.config";
 
 export async function POST(req: NextRequest) {
-  const { username, password } = await req.json();
-  const validUser = process.env.DASHBOARD_USER ?? "";
-  const validPass = process.env.DASHBOARD_PASSWORD ?? "";
+  const { pin } = await req.json();
+  const validPin = clientConfig.loginPin;
 
-  if (!validUser || !validPass) {
-    return NextResponse.json(
-      { error: "DASHBOARD_USER o DASHBOARD_PASSWORD no configurados" },
-      { status: 500 }
-    );
-  }
+  const pBuf = Buffer.from(pin ?? "");
+  const vpBuf = Buffer.from(validPin);
+  const match = pBuf.length === vpBuf.length && crypto.timingSafeEqual(pBuf, vpBuf);
 
-  const uBuf = Buffer.from(username ?? "");
-  const pBuf = Buffer.from(password ?? "");
-  const vuBuf = Buffer.from(validUser);
-  const vpBuf = Buffer.from(validPass);
-
-  const uMatch =
-    uBuf.length === vuBuf.length && crypto.timingSafeEqual(uBuf, vuBuf);
-  const pMatch =
-    pBuf.length === vpBuf.length && crypto.timingSafeEqual(pBuf, vpBuf);
-
-  if (!uMatch || !pMatch) {
-    return NextResponse.json(
-      { error: "Credenciales incorrectas" },
-      { status: 401 }
-    );
+  if (!match) {
+    return NextResponse.json({ error: "PIN incorrecto" }, { status: 401 });
   }
 
   const res = NextResponse.json({ ok: true });
