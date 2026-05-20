@@ -1,6 +1,8 @@
 export const clientConfig = {
   name: "Studio Bandito",
   businessName: "Studio Bandito",
+  businessDescription: "Estudio de corte de cabello, barba y masajes relajantes en San Juan",
+  behavior: "profesional y cercano",
   slogan: "",
   address: "Tucumán 1106 sur, Capital, San Juan",
   phone: "2646230305",
