@@ -15,18 +15,14 @@ export default function MetricsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, we would fetch from /api/metrics
-    // For now, we simulate an API call and provide mocked realistic data
-    setTimeout(() => {
-      setData({
-        totalLeads: 142,
-        totalAppointments: 38,
-        conversionRate: 26.7,
-        humanInterventions: 14,
-        aiMessagesHandled: 1250,
-      });
-      setLoading(false);
-    }, 1000);
+    setData({
+      totalLeads: 0,
+      totalAppointments: 0,
+      conversionRate: 0,
+      humanInterventions: 0,
+      aiMessagesHandled: 0,
+    });
+    setLoading(false);
   }, []);
 
   return (
@@ -57,9 +53,7 @@ export default function MetricsPage() {
                 <h3 className="text-sm font-semibold text-[var(--color-wa-text-sec)] uppercase tracking-wider">Total Leads</h3>
               </div>
               <p className="text-2xl font-bold text-[var(--color-wa-text-main)] mt-1">{data.totalLeads}</p>
-              <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
-                <span>+12% esta semana</span>
-              </p>
+              <p className="text-xs text-[var(--color-wa-text-sec)] mt-1">Contactos que iniciaron conversación</p>
             </div>
 
             {/* Card 2 */}
