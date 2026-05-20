@@ -53,4 +53,10 @@ export const clientConfig = {
   botBooking: true,
   appointmentDuration: 40,
   loginPin: "0000",
+
+  responseDelayMs: 8000,
+  appointments: {
+    enabled: true,
+    resource: "Bandito",
+  },
 };
