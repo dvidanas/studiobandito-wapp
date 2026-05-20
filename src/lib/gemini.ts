@@ -1,4 +1,4 @@
-import { SYSTEM_PROMPT } from "./system-prompt";
+import { buildSystemPrompt } from "./system-prompt";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -32,9 +32,10 @@ export async function getChatCompletion(
   const apiKey = process.env.GEMINI_API_KEY!;
   console.log("[llm] usando modelo:", model);
 
+  const prompt = buildSystemPrompt();
   const systemText = extraInstruction
-    ? `INSTRUCCIONES DEL SISTEMA:\n${SYSTEM_PROMPT}\n\nINSTRUCCIÓN ADICIONAL PARA ESTE MENSAJE:\n${extraInstruction}`
-    : `INSTRUCCIONES DEL SISTEMA:\n${SYSTEM_PROMPT}`;
+    ? `INSTRUCCIONES DEL SISTEMA:\n${prompt}\n\nINSTRUCCIÓN ADICIONAL PARA ESTE MENSAJE:\n${extraInstruction}`
+    : `INSTRUCCIONES DEL SISTEMA:\n${prompt}`;
 
   const start = Date.now();
   const res = await fetch(
