@@ -159,6 +159,15 @@ function migrate(db: Database.Database) {
     ins.run("business_description", clientConfig.businessDescription.trim());
   }
 
+  // Seed servicios iniciales si la tabla está vacía
+  const servicesCount = db.prepare<[], { count: number }>("SELECT COUNT(*) as count FROM services").get()!;
+  if (servicesCount.count === 0) {
+    const ins = db.prepare("INSERT INTO services (name, description, price, duration_minutes, active) VALUES (?, ?, ?, ?, 1)");
+    ins.run("Corte de cabello / Barba", "Incluye productos", "17000", 40);
+    ins.run("Corte + Barba + Perfilado de cejas", "Incluye productos", "20000", 40);
+    ins.run("Masaje relajante", "Facial, capilar o cervical — a elección", "40000", 40);
+  }
+
   // Migraciones incrementales (idempotentes con try/catch)
   try {
     db.exec("ALTER TABLE conversations ADD COLUMN has_lead INTEGER NOT NULL DEFAULT 0");
