@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 interface Props {
   missing: string[];
 }
@@ -119,6 +121,16 @@ export function ConfigScreen({ missing }: Props) {
                 ))}
               </ol>
             </div>
+            {/* Acceso al dashboard */}
+            <div className="pt-2 border-t border-gray-100">
+              <Link
+                href="/"
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-lg bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium transition-colors"
+              >
+                Ir al dashboard
+              </Link>
+            </div>
+
           </div>
         </div>
       </div>
