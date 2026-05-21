@@ -54,7 +54,7 @@ function LoginForm() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 100%)",
+      background: "radial-gradient(circle at 50% 0%, #ffffff 0%, #f0f0f3 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -62,7 +62,7 @@ function LoginForm() {
       gap: "3rem",
       padding: "1.5rem",
       fontFamily: "system-ui, -apple-system, sans-serif",
-      color: "#fff",
+      color: "#1a1a1a",
       position: "relative"
     }}>
 
@@ -75,11 +75,11 @@ function LoginForm() {
             height: "140px", 
             width: "auto", 
             objectFit: "contain",
-            filter: "invert(1) drop-shadow(0px 4px 10px rgba(0,0,0,0.5))"
+            filter: "drop-shadow(0px 2px 10px rgba(0,0,0,0.05))"
           }} 
         />
         <p style={{
-          color: "rgba(255,255,255,0.4)",
+          color: "rgba(0,0,0,0.5)",
           fontSize: "0.75rem",
           letterSpacing: "0.25em",
           textTransform: "uppercase",
@@ -100,10 +100,10 @@ function LoginForm() {
                 width: isActive ? "3rem" : "1.25rem",
                 height: "1.25rem",
                 borderRadius: "1rem",
-                border: `1px solid ${error ? "#ef4444" : isActive ? "#fff" : "rgba(255,255,255,0.15)"}`,
-                background: error ? "#ef4444" : isActive ? "#fff" : "transparent",
+                border: `1.5px solid ${error ? "#ef4444" : isActive ? "#222" : "rgba(0,0,0,0.15)"}`,
+                background: error ? "#ef4444" : isActive ? "#222" : "transparent",
                 transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                boxShadow: isActive && !error ? "0 0 15px rgba(255,255,255,0.2)" : "none",
+                boxShadow: isActive && !error ? "0 4px 10px rgba(0,0,0,0.15)" : "none",
               }}
             />
           );
@@ -131,19 +131,19 @@ function LoginForm() {
                 height: "4rem",
                 borderRadius: "1.25rem",
                 fontSize: isNumber ? "1.5rem" : "1.25rem",
-                fontWeight: isNumber ? 300 : 400,
+                fontWeight: isNumber ? 500 : 400,
                 cursor: loading ? "default" : "pointer",
                 transition: "all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-                border: "1px solid rgba(255,255,255,0.05)",
+                border: "1px solid rgba(0,0,0,0.06)",
                 background: isConfirm
-                  ? canSubmit ? "#fff" : "rgba(255,255,255,0.03)"
-                  : "rgba(255,255,255,0.03)",
+                  ? canSubmit ? "#222" : "rgba(0,0,0,0.04)"
+                  : "rgba(0,0,0,0.03)",
                 color: isConfirm
-                  ? canSubmit ? "#000" : "rgba(255,255,255,0.2)"
-                  : "rgba(255,255,255,0.8)",
+                  ? canSubmit ? "#fff" : "rgba(0,0,0,0.2)"
+                  : "rgba(0,0,0,0.7)",
                 outline: "none",
                 WebkitTapHighlightColor: "transparent",
-                backdropFilter: "blur(10px)",
+                boxShadow: isNumber ? "0 2px 5px rgba(0,0,0,0.02)" : "none",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center"
@@ -155,7 +155,7 @@ function LoginForm() {
                   width: "1.25rem",
                   height: "1.25rem",
                   border: "2px solid rgba(0,0,0,0.1)",
-                  borderTop: "2px solid #000",
+                  borderTop: "2px solid #fff",
                   borderRadius: "50%",
                   animation: "spin 0.8s linear infinite",
                 }} />
@@ -178,10 +178,10 @@ function LoginForm() {
         </p>
       )}
 
-      <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.15)", position: "absolute", bottom: "1.5rem", letterSpacing: "0.05em" }}>
+      <p style={{ fontSize: "11px", color: "rgba(0,0,0,0.3)", position: "absolute", bottom: "1.5rem", letterSpacing: "0.05em" }}>
         DESARROLLADO POR{" "}
         <a href="https://www.feer.com.ar" target="_blank" rel="noopener noreferrer"
-          style={{ color: "#fff", textDecoration: "none", opacity: 0.8 }}>
+          style={{ color: "#222", textDecoration: "none", fontWeight: 600 }}>
           FEER
         </a>
       </p>
@@ -196,7 +196,7 @@ function LoginForm() {
         }
         button:not(:disabled):active { 
           transform: scale(0.95);
-          background: rgba(255,255,255,0.08) !important;
+          background: rgba(0,0,0,0.08) !important;
         }
       `}</style>
     </div>
@@ -205,7 +205,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100dvh", background: "#000" }} />}>
+    <Suspense fallback={<div style={{ minHeight: "100dvh", background: "#f0f0f3" }} />}>
       <LoginForm />
     </Suspense>
   );
