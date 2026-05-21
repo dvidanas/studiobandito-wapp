@@ -41,23 +41,6 @@ interface Stats {
   cancelled: number;
 }
 
-interface DBService {
-  id: number;
-  name: string;
-  description: string | null;
-  price: string | null;
-  duration_minutes: number;
-  active: number;
-}
-
-interface DBPromotion {
-  id: number;
-  title: string;
-  description: string | null;
-  discount: string | null;
-  active: number;
-}
-
 const STATUS_STYLES = {
   pending: "bg-amber-400 text-[#141d37]",
   confirmed: "bg-teal-400 text-teal-950",
@@ -641,10 +624,6 @@ export default function AppointmentsPage() {
   const [savingModal, setSavingModal] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const [dbServices, setDbServices] = useState<DBService[]>([]);
-  const [dbPromotions, setDbPromotions] = useState<DBPromotion[]>([]);
-  const [selectedPredefined, setSelectedPredefined] = useState("");
-
   const { from, to } = useMemo(() => getMonthBounds(currentMonth), [currentMonth]);
 
   const fetchData = useCallback(async () => {
@@ -673,22 +652,6 @@ export default function AppointmentsPage() {
     const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, [fetchData]);
-
-  useEffect(() => {
-    fetch("/api/settings/services")
-      .then((r) => r.json())
-      .then((data: DBService[]) => {
-        setDbServices((data ?? []).filter((s) => s.active === 1));
-      })
-      .catch((err) => console.error("Error fetching services:", err));
-
-    fetch("/api/promotions")
-      .then((r) => r.json())
-      .then((data: DBPromotion[]) => {
-        setDbPromotions((data ?? []).filter((p) => p.active === 1));
-      })
-      .catch((err) => console.error("Error fetching promotions:", err));
-  }, []);
 
   useEffect(() => {
     if (!showModal || !modalDate || !modalResource) return;
@@ -729,30 +692,6 @@ export default function AppointmentsPage() {
     await fetch(`/api/appointments/${id}/status`, { method: "DELETE" });
   }
 
-  function handlePredefinedChange(value: string) {
-    setSelectedPredefined(value);
-    if (!value) return;
-
-    if (value.startsWith("service-")) {
-      const serviceId = Number(value.replace("service-", ""));
-      const service = dbServices.find((s) => s.id === serviceId);
-      if (service) {
-        setModalService(service.name);
-        setModalDuration(service.duration_minutes);
-      }
-    } else if (value.startsWith("promo-")) {
-      const promoId = Number(value.replace("promo-", ""));
-      const promo = dbPromotions.find((p) => p.id === promoId);
-      if (promo) {
-        setModalService(promo.title);
-        let promoText = `Promoción: ${promo.title}`;
-        if (promo.discount) promoText += ` (Descuento: ${promo.discount})`;
-        if (promo.description) promoText += ` - ${promo.description}`;
-        setModalNotes(promoText);
-      }
-    }
-  }
-
   function openModal(date: string) {
     setEditingAppointment(null);
     setModalDate(date);
@@ -762,7 +701,6 @@ export default function AppointmentsPage() {
     setModalNotes("");
     setModalDuration(30);
     setModalSlot("");
-    setSelectedPredefined("");
     setShowModal(true);
   }
 
@@ -776,20 +714,6 @@ export default function AppointmentsPage() {
     setModalNotes(a.notes ?? "");
     setModalDuration(a.duration_minutes);
     setModalSlot(a.time_start);
-
-    const serviceName = a.service ?? "";
-    const matchedService = dbServices.find((s) => s.name.toLowerCase() === serviceName.toLowerCase());
-    if (matchedService) {
-      setSelectedPredefined(`service-${matchedService.id}`);
-    } else {
-      const matchedPromo = dbPromotions.find((p) => p.title.toLowerCase() === serviceName.toLowerCase());
-      if (matchedPromo) {
-        setSelectedPredefined(`promo-${matchedPromo.id}`);
-      } else {
-        setSelectedPredefined("");
-      }
-    }
-
     setShowModal(true);
   }
 
@@ -957,7 +881,7 @@ export default function AppointmentsPage() {
                   onChange={(e) => setModalDuration(Number(e.target.value))}
                   className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
                 >
-                  {Array.from(new Set([15, 30, 45, 60, 90, 120, modalDuration])).sort((a, b) => a - b).map((d) => (
+                  {[15, 30, 45, 60, 90, 120].map((d) => (
                     <option key={d} value={d}>{d} min</option>
                   ))}
                 </select>
@@ -990,43 +914,11 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Elegir Servicio o Promoción</label>
-                <select
-                  value={selectedPredefined}
-                  onChange={(e) => handlePredefinedChange(e.target.value)}
-                  className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)]"
-                >
-                  <option value="">-- Personalizado / Ninguno --</option>
-                  {dbServices.length > 0 && (
-                    <optgroup label="Servicios">
-                      {dbServices.map((s) => (
-                        <option key={`service-${s.id}`} value={`service-${s.id}`}>
-                          {s.name} ({s.duration_minutes} min{s.price ? ` - $${s.price}` : ""})
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {dbPromotions.length > 0 && (
-                    <optgroup label="Promociones">
-                      {dbPromotions.map((p) => (
-                        <option key={`promo-${p.id}`} value={`promo-${p.id}`}>
-                          {p.title} {p.discount ? `(-${p.discount})` : ""}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Nombre del Servicio (opcional)</label>
+                <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Servicio (opcional)</label>
                 <input
                   type="text"
                   value={modalService}
-                  onChange={(e) => {
-                    setModalService(e.target.value);
-                    setSelectedPredefined("");
-                  }}
+                  onChange={(e) => setModalService(e.target.value)}
                   placeholder="Ej: Servicio"
                   className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
                 />
