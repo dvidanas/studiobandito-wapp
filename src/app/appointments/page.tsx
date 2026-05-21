@@ -846,7 +846,7 @@ export default function AppointmentsPage() {
                   type="text"
                   value={modalService}
                   onChange={(e) => setModalService(e.target.value)}
-                  placeholder="Ej: Diagnóstico gratuito"
+                  placeholder="Ej: Servicio"
                   className="w-full text-sm bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-lg px-3 py-2.5 text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] placeholder:text-[var(--color-wa-text-sec)]"
                 />
               </div>
