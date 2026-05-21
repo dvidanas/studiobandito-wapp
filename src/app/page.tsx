@@ -168,15 +168,13 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
             bg-white dark:bg-[var(--color-wa-panel-l)] flex-col
             md:rounded-2xl md:shadow-[0_1px_4px_rgba(0,0,0,0.08)] md:overflow-hidden
           `}>
-            <div className="px-4 py-3 border-b border-[var(--color-wa-sep)] flex items-center justify-between flex-shrink-0">
-              <div>
-                <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Mensajes</h2>
-                {connectionStatus.phone && (
-                  <p className="text-sm text-[var(--color-wa-text-sec)]">
-                  {connectionStatus.phone ? `+${connectionStatus.phone}` : ""}
-                </p>
-                )}
-              </div>
+            <div className="relative px-4 py-3 border-b border-[var(--color-wa-sep)] flex items-center justify-between flex-shrink-0">
+              <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Mensajes</h2>
+              {connectionStatus.phone && (
+                <span className="text-sm font-medium text-[var(--color-wa-text-sec)] absolute left-1/2 -translate-x-1/2">
+                  +{connectionStatus.phone}
+                </span>
+              )}
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${connectionStatus.status === "connected" ? "bg-green-500" : "bg-red-500"}`} />
               </div>
