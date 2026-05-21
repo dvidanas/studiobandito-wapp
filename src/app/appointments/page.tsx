@@ -284,22 +284,39 @@ function DayAppointmentCard({
 
           {/* Consolidated metadata line (Origin, Status, Staff, Phone) */}
           <div className="flex flex-wrap items-center gap-y-1 gap-x-2 mt-2 text-xs text-[var(--color-wa-text-sec)]">
-            <span className="font-semibold text-[var(--color-wa-text-main)]">
-              {a.source === "bot" ? "🤖 Bot" : "👤 Manual"}
+            <span className="flex items-center gap-0.5">
+              {a.source === "bot" ? (
+                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9h14v10H5V9zm3 4h.01M16 13h.01" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )}
+              <span className="font-semibold text-[var(--color-wa-text-main)]">
+                {a.source === "bot" ? "Bot" : "Manual"}
+              </span>
             </span>
 
             <span className="opacity-40 select-none">·</span>
 
-            <span>
-              Estado:{" "}
-              <span className={`font-bold ${
-                a.status === "confirmed" 
-                  ? "text-teal-500 dark:text-teal-400" 
-                  : a.status === "pending" 
-                    ? "text-amber-500 dark:text-amber-400" 
-                    : "text-red-500 dark:text-red-400"
-              }`}>
-                {STATUS_LABELS[a.status]}
+            <span className="flex items-center gap-0.5">
+              <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a1.44 1.44 0 002.036 0l4.319-4.32a1.44 1.44 0 000-2.037L11.16 3.66A2.25 2.25 0 009.568 3z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+              </svg>
+              <span>
+                Estado:{" "}
+                <span className={`font-bold ${
+                  a.status === "confirmed" 
+                    ? "text-teal-500 dark:text-teal-400" 
+                    : a.status === "pending" 
+                      ? "text-amber-500 dark:text-amber-400" 
+                      : "text-red-500 dark:text-red-400"
+                }`}>
+                  {STATUS_LABELS[a.status]}
+                </span>
               </span>
             </span>
 
@@ -809,12 +826,19 @@ export default function AppointmentsPage() {
       {/* New/Edit appointment modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-[var(--color-wa-panel-l)] rounded-2xl w-full max-w-sm shadow-2xl animate-modal">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              saveAppointment();
+            }}
+            className="bg-[var(--color-wa-panel-l)] rounded-2xl w-full max-w-sm shadow-2xl animate-modal"
+          >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-wa-sep)]">
               <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">
                 {editingAppointment ? "Editar turno" : "Nuevo turno"}
               </h2>
               <button
+                type="button"
                 onClick={() => { setShowModal(false); setEditingAppointment(null); }}
                 className="text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)]"
               >
@@ -874,6 +898,7 @@ export default function AppointmentsPage() {
                     {modalSlots.map((s) => (
                       <button
                         key={s.time_start}
+                        type="button"
                         onClick={() => setModalSlot(s.time_start)}
                         className={`text-sm py-2 rounded-lg border transition-colors ${
                           modalSlot === s.time_start
@@ -936,20 +961,21 @@ export default function AppointmentsPage() {
 
             <div className="px-5 pb-5 flex gap-2">
               <button
+                type="button"
                 onClick={() => { setShowModal(false); setEditingAppointment(null); }}
                 className="flex-1 py-3 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-main)] text-sm font-medium rounded-xl hover:bg-[var(--color-wa-hover)] transition-colors"
               >
                 Cancelar
               </button>
               <button
-                onClick={saveAppointment}
+                type="submit"
                 disabled={!modalSlot || savingModal}
                 className="flex-1 py-3 bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)] text-sm font-semibold rounded-xl hover:bg-[var(--color-wa-green-dark)] disabled:opacity-50 transition-colors"
               >
                 {savingModal ? "Guardando…" : editingAppointment ? "Guardar cambios" : "Guardar turno"}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
