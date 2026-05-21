@@ -3,8 +3,8 @@ import path from "node:path";
 import fs from "node:fs";
 import { clientConfig } from "./client.config";
 
-const DB_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DB_DIR, "messages.db");
+const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), "data", "messages.db");
+const DB_DIR = path.dirname(DB_PATH);
 
 let _db: Database.Database | null = null;
 
