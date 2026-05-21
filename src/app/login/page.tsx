@@ -73,7 +73,8 @@ function LoginForm() {
           alt="Studio Bandito Barberia" 
           style={{ 
             height: "140px", 
-            width: "auto", 
+            width: "100%", 
+            maxWidth: "280px",
             objectFit: "contain",
             filter: "drop-shadow(0px 2px 10px rgba(0,0,0,0.05))"
           }} 
