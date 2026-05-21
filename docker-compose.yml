@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        CACHEBUST: ${CACHEBUST:-1}
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
