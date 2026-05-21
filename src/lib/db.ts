@@ -570,7 +570,7 @@ export function listResources(): Resource[] {
   return getDb().prepare<[], Resource>("SELECT * FROM resources WHERE active = 1 ORDER BY id").all();
 }
 
-export function getAvailableSlots(date: string, durationMinutes: number): AvailableSlot[] {
+export function getAvailableSlots(date: string, durationMinutes: number, excludeAppointmentId?: number): AvailableSlot[] {
   const db = getDb();
   // JS Date with noon UTC avoids DST shifts when parsing YYYY-MM-DD
   const dayOfWeek = new Date(date + "T12:00:00Z").getUTCDay();
@@ -584,11 +584,17 @@ export function getAvailableSlots(date: string, durationMinutes: number): Availa
       )
       .all(resource.id, dayOfWeek);
 
-    const booked = db
-      .prepare<[number, string], Pick<Appointment, "time_start" | "time_end">>(
-        "SELECT time_start, time_end FROM appointments WHERE resource_id = ? AND date = ? AND status != 'cancelled'"
-      )
-      .all(resource.id, date);
+    const booked = excludeAppointmentId
+      ? db
+          .prepare<[number, string, number], Pick<Appointment, "time_start" | "time_end">>(
+            "SELECT time_start, time_end FROM appointments WHERE resource_id = ? AND date = ? AND status != 'cancelled' AND id != ?"
+          )
+          .all(resource.id, date, excludeAppointmentId)
+      : db
+          .prepare<[number, string], Pick<Appointment, "time_start" | "time_end">>(
+            "SELECT time_start, time_end FROM appointments WHERE resource_id = ? AND date = ? AND status != 'cancelled'"
+          )
+          .all(resource.id, date);
 
     const blocked = db
       .prepare<[number, string], Pick<BlockedSlot, "time_start" | "time_end">>(
@@ -678,6 +684,49 @@ export function updateAppointmentStatus(
   getDb()
     .prepare("UPDATE appointments SET status = ? WHERE id = ?")
     .run(status, id);
+}
+
+export function updateAppointment(
+  id: number,
+  data: {
+    resource_id: number;
+    service?: string | null;
+    date: string;
+    time_start: string;
+    duration_minutes: number;
+    notes?: string | null;
+    contact_name?: string | null;
+    contact_phone?: string | null;
+  }
+): void {
+  const endMins = timeToMinutes(data.time_start) + data.duration_minutes;
+  const time_end = minutesToTime(endMins);
+  getDb()
+    .prepare(
+      `UPDATE appointments
+       SET resource_id = ?,
+           service = ?,
+           date = ?,
+           time_start = ?,
+           time_end = ?,
+           duration_minutes = ?,
+           notes = ?,
+           contact_name = ?,
+           contact_phone = ?
+       WHERE id = ?`
+    )
+    .run(
+      data.resource_id,
+      data.service ?? null,
+      data.date,
+      data.time_start,
+      time_end,
+      data.duration_minutes,
+      data.notes ?? null,
+      data.contact_name ?? null,
+      data.contact_phone ?? null,
+      id
+    );
 }
 
 export function deleteAppointment(id: number): void {

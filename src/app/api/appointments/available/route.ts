@@ -11,7 +11,9 @@ export async function GET(req: NextRequest) {
     | { defaultDuration: number }
     | undefined;
   const duration = Number(searchParams.get("duration") ?? apptConfig?.defaultDuration ?? 30);
+  const excludeIdStr = searchParams.get("excludeAppointmentId");
+  const excludeId = excludeIdStr ? Number(excludeIdStr) : undefined;
 
-  const slots = getAvailableSlots(date, duration);
+  const slots = getAvailableSlots(date, duration, excludeId && !isNaN(excludeId) ? excludeId : undefined);
   return NextResponse.json({ date, duration, slots });
 }

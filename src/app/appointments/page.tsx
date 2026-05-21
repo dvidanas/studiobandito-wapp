@@ -207,10 +207,12 @@ function DayAppointmentCard({
   appointment: a,
   onStatusChange,
   onDelete,
+  onEdit,
 }: {
   appointment: Appointment;
   onStatusChange: (id: number, status: Appointment["status"]) => void;
   onDelete: (id: number) => void;
+  onEdit: (appointment: Appointment) => void;
 }) {
   const name = a.contact_name ?? a.contact_phone ?? "Sin nombre";
   const accentColor = a.status === "pending" ? "#F59E0B" : a.status === "confirmed" ? "#2DD4BF" : "var(--color-wa-sep)";
@@ -260,33 +262,17 @@ function DayAppointmentCard({
 
         {/* Details */}
         <div className="min-w-0">
-          {/* Mobile Time and Badges (Mobile only) */}
-          <div className="flex md:hidden items-center gap-2 mb-2 flex-wrap">
-            {/* Time Badge */}
+          {/* Mobile Time (Mobile only) */}
+          <div className="flex md:hidden items-center gap-2 mb-1.5">
             <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 py-0.5 px-2 rounded-full">
               <span className="text-[11px] font-bold text-[var(--color-wa-text-main)]">
                 {formatTime(a.time_start)} - {formatTime(a.time_end)}
               </span>
             </div>
-            {/* Badges */}
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${STATUS_STYLES[a.status]}`}>
-              {STATUS_LABELS[a.status]}
-            </span>
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-              a.source === "bot"
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                : "bg-[var(--color-wa-hover)] text-[var(--color-wa-text-sec)]"
-            }`}>
-              {a.source === "bot" ? "🤖 Bot" : "👤 Manual"}
-            </span>
           </div>
 
-          <h3 className="text-base font-bold text-[var(--color-wa-text-main)] leading-tight flex items-center gap-2">
+          <h3 className="text-base font-bold text-[var(--color-wa-text-main)] leading-tight">
             {name}
-            {/* Desktop-only source indicator icon next to name */}
-            <span className="hidden md:inline text-xs opacity-75">
-              {a.source === "bot" ? "🤖" : "👤"}
-            </span>
           </h3>
           
           {a.service && (
@@ -296,32 +282,58 @@ function DayAppointmentCard({
             </p>
           )}
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 mt-2 text-xs text-[var(--color-wa-text-sec)]">
-            {a.resource_name && (
-              <span className="flex items-center gap-1">
-                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Atiende: <span className="font-semibold text-[var(--color-wa-text-main)]">{a.resource_name}</span>
+          {/* Consolidated metadata line (Origin, Status, Staff, Phone) */}
+          <div className="flex flex-wrap items-center gap-y-1 gap-x-2 mt-2 text-xs text-[var(--color-wa-text-sec)]">
+            <span className="font-semibold text-[var(--color-wa-text-main)]">
+              {a.source === "bot" ? "🤖 Bot" : "👤 Manual"}
+            </span>
+
+            <span className="opacity-40 select-none">·</span>
+
+            <span>
+              Estado:{" "}
+              <span className={`font-bold ${
+                a.status === "confirmed" 
+                  ? "text-teal-500 dark:text-teal-400" 
+                  : a.status === "pending" 
+                    ? "text-amber-500 dark:text-amber-400" 
+                    : "text-red-500 dark:text-red-400"
+              }`}>
+                {STATUS_LABELS[a.status]}
               </span>
+            </span>
+
+            {a.resource_name && (
+              <>
+                <span className="opacity-40 select-none">·</span>
+                <span className="flex items-center gap-0.5">
+                  <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Atiende: <span className="font-semibold text-[var(--color-wa-text-main)]">{a.resource_name}</span>
+                </span>
+              </>
             )}
 
             {a.contact_phone && a.contact_name && (
-              <a 
-                href={`tel:${a.contact_phone}`} 
-                className="flex items-center gap-1 hover:text-[var(--color-wa-green-dark)] transition-colors"
-              >
-                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <span>{a.contact_phone}</span>
-              </a>
+              <>
+                <span className="opacity-40 select-none">·</span>
+                <a 
+                  href={`tel:${a.contact_phone}`} 
+                  className="flex items-center gap-0.5 hover:text-[var(--color-wa-green-dark)] transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  <span>{a.contact_phone}</span>
+                </a>
+              </>
             )}
           </div>
         </div>
       </div>
 
-      {/* MIDDLE SECTION: Notes (if any) & Desktop Badges */}
+      {/* MIDDLE SECTION: Notes (if any) */}
       <div className="flex-1 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:px-4 min-w-0">
         {/* Notes */}
         {a.notes ? (
@@ -332,16 +344,6 @@ function DayAppointmentCard({
         ) : (
           <div className="hidden md:block flex-1" /> // spacer
         )}
-
-        {/* Desktop Status Badge */}
-        <div className="hidden md:flex flex-col items-end gap-1.5 flex-shrink-0">
-          <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full ${STATUS_STYLES[a.status]}`}>
-            {STATUS_LABELS[a.status]}
-          </span>
-          <span className="text-[10px] text-[var(--color-wa-text-sec)]">
-            Origen: {a.source === "bot" ? "Bot🤖" : "Manual👤"}
-          </span>
-        </div>
       </div>
 
       {/* RIGHT SECTION: Actions Bar */}
@@ -393,6 +395,17 @@ function DayAppointmentCard({
             </button>
           )}
 
+          {/* Edit Action Button */}
+          <button
+            onClick={() => onEdit(a)}
+            className="text-xs px-4 py-2 bg-amber-500 text-white rounded-full font-semibold hover:bg-amber-600 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Editar
+          </button>
+
           {/* Chat WhatsApp Link */}
           {a.conversation_id !== null && (
             <Link
@@ -432,6 +445,7 @@ function DayPanel({
   onAdd,
   onStatusChange,
   onDelete,
+  onEdit,
 }: {
   selectedDay: string;
   appointments: Appointment[];
@@ -439,6 +453,7 @@ function DayPanel({
   onAdd: () => void;
   onStatusChange: (id: number, status: Appointment["status"]) => void;
   onDelete: (id: number) => void;
+  onEdit: (appointment: Appointment) => void;
 }) {
   const label = formatDateLabel(selectedDay);
   const count = appointments.length;
@@ -489,6 +504,7 @@ function DayPanel({
               appointment={a}
               onStatusChange={onStatusChange}
               onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))
         )}
@@ -504,11 +520,13 @@ function ListaView({
   loading,
   onStatusChange,
   onDelete,
+  onEdit,
 }: {
   appointments: Appointment[];
   loading: boolean;
   onStatusChange: (id: number, status: Appointment["status"]) => void;
   onDelete: (id: number) => void;
+  onEdit: (appointment: Appointment) => void;
 }) {
   const grouped = useMemo(() => {
     const g: Record<string, Appointment[]> = {};
@@ -551,6 +569,7 @@ function ListaView({
                 appointment={a}
                 onStatusChange={onStatusChange}
                 onDelete={onDelete}
+                onEdit={onEdit}
               />
             ))}
           </div>
@@ -575,6 +594,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
   const [modalDate, setModalDate] = useState("");
   const [modalResource, setModalResource] = useState<number>(0);
   const [modalSlots, setModalSlots] = useState<AvailableSlot[]>([]);
@@ -618,14 +638,19 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     if (!showModal || !modalDate || !modalResource) return;
-    fetch(`/api/appointments/available?date=${modalDate}&duration=${modalDuration}`)
+    const excludeQuery = editingAppointment ? `&excludeAppointmentId=${editingAppointment.id}` : "";
+    fetch(`/api/appointments/available?date=${modalDate}&duration=${modalDuration}${excludeQuery}`)
       .then((r) => r.json())
       .then((d) => {
         const filtered = (d.slots ?? []).filter((s: AvailableSlot) => s.resource_id === modalResource);
         setModalSlots(filtered);
-        setModalSlot(filtered[0]?.time_start ?? "");
+        
+        const hasSlot = filtered.some((s: AvailableSlot) => s.time_start === modalSlot);
+        if (!hasSlot && !editingAppointment) {
+          setModalSlot(filtered[0]?.time_start ?? "");
+        }
       });
-  }, [showModal, modalDate, modalResource, modalDuration]);
+  }, [showModal, modalDate, modalResource, modalDuration, editingAppointment]);
 
   const appointmentDays = useMemo(() => new Set(appointments.map((a) => a.date)), [appointments]);
   const apptsByDay = useCallback(
@@ -651,6 +676,7 @@ export default function AppointmentsPage() {
   }
 
   function openModal(date: string) {
+    setEditingAppointment(null);
     setModalDate(date);
     setModalService("");
     setModalName("");
@@ -661,12 +687,29 @@ export default function AppointmentsPage() {
     setShowModal(true);
   }
 
+  function openEditModal(a: Appointment) {
+    setEditingAppointment(a);
+    setModalDate(a.date);
+    setModalResource(a.resource_id);
+    setModalService(a.service ?? "");
+    setModalName(a.contact_name ?? "");
+    setModalPhone(a.contact_phone ?? "");
+    setModalNotes(a.notes ?? "");
+    setModalDuration(a.duration_minutes);
+    setModalSlot(a.time_start);
+    setShowModal(true);
+  }
+
   async function saveAppointment() {
     if (!modalDate || !modalSlot || !modalResource) return;
     setSavingModal(true);
     try {
-      const res = await fetch("/api/appointments", {
-        method: "POST",
+      const url = editingAppointment 
+        ? `/api/appointments/${editingAppointment.id}` 
+        : "/api/appointments";
+      const method = editingAppointment ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           resource_id: modalResource,
@@ -681,6 +724,7 @@ export default function AppointmentsPage() {
       });
       if (res.ok) {
         setShowModal(false);
+        setEditingAppointment(null);
         fetchData();
       }
     } finally {
@@ -715,6 +759,7 @@ export default function AppointmentsPage() {
     onAdd: () => openModal(selectedDay),
     onStatusChange: changeStatus,
     onDelete: setDeleteId,
+    onEdit: openEditModal,
   };
 
   return (
@@ -744,6 +789,7 @@ export default function AppointmentsPage() {
                 loading={loading}
                 onStatusChange={changeStatus}
                 onDelete={setDeleteId}
+                onEdit={openEditModal}
               />
             </div>
           )}
@@ -760,14 +806,16 @@ export default function AppointmentsPage() {
         </div>
       </main>
 
-      {/* New appointment modal */}
+      {/* New/Edit appointment modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-[var(--color-wa-panel-l)] rounded-2xl w-full max-w-sm shadow-2xl animate-modal">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-wa-sep)]">
-              <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Nuevo turno</h2>
+              <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">
+                {editingAppointment ? "Editar turno" : "Nuevo turno"}
+              </h2>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setEditingAppointment(null); }}
                 className="text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)]"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -888,7 +936,7 @@ export default function AppointmentsPage() {
 
             <div className="px-5 pb-5 flex gap-2">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => { setShowModal(false); setEditingAppointment(null); }}
                 className="flex-1 py-3 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-main)] text-sm font-medium rounded-xl hover:bg-[var(--color-wa-hover)] transition-colors"
               >
                 Cancelar
@@ -898,7 +946,7 @@ export default function AppointmentsPage() {
                 disabled={!modalSlot || savingModal}
                 className="flex-1 py-3 bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)] text-sm font-semibold rounded-xl hover:bg-[var(--color-wa-green-dark)] disabled:opacity-50 transition-colors"
               >
-                {savingModal ? "Guardando…" : "Guardar turno"}
+                {savingModal ? "Guardando…" : editingAppointment ? "Guardar cambios" : "Guardar turno"}
               </button>
             </div>
           </div>
