@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { TopNav, BottomNav } from "@/components/TopNav";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { PullToRefresh } from "@/components/PullToRefresh";
 
 interface Appointment {
   id: number;
@@ -784,43 +785,45 @@ export default function AppointmentsPage() {
       <TopNav />
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Desktop: calendar split OR lista */}
-        <div className="hidden md:flex flex-1 overflow-hidden md:p-3 md:gap-3">
-          {viewMode === "calendar" ? (
-            <>
-              {/* Left: mini calendar card */}
-              <div className="w-[350px] flex-shrink-0 overflow-y-auto">
-                <div className="bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
-                  <MiniCalendar {...calendarProps} />
+        <PullToRefresh onRefresh={fetchData} className="flex-1 flex flex-col overflow-hidden">
+          {/* Desktop: calendar split OR lista */}
+          <div className="hidden md:flex flex-1 overflow-hidden md:p-3 md:gap-3">
+            {viewMode === "calendar" ? (
+              <>
+                {/* Left: mini calendar card */}
+                <div className="w-[350px] flex-shrink-0 overflow-y-auto">
+                  <div className="bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+                    <MiniCalendar {...calendarProps} />
+                  </div>
                 </div>
-              </div>
-              {/* Right: day panel card */}
+                {/* Right: day panel card */}
+                <div className="flex-1 bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
+                  <DayPanel {...dayPanelProps} />
+                </div>
+              </>
+            ) : (
               <div className="flex-1 bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
-                <DayPanel {...dayPanelProps} />
+                <ListaView
+                  appointments={appointments}
+                  loading={loading}
+                  onStatusChange={changeStatus}
+                  onDelete={setDeleteId}
+                  onEdit={openEditModal}
+                />
               </div>
-            </>
-          ) : (
-            <div className="flex-1 bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
-              <ListaView
-                appointments={appointments}
-                loading={loading}
-                onStatusChange={changeStatus}
-                onDelete={setDeleteId}
-                onEdit={openEditModal}
-              />
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Mobile: mini calendar + day panel stacked */}
-        <div className="md:hidden flex flex-col flex-1 overflow-hidden">
-          <div className="flex-shrink-0 bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)] px-4 pt-3 pb-4">
-            <MiniCalendar {...calendarProps} compact />
+          {/* Mobile: mini calendar + day panel stacked */}
+          <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+            <div className="flex-shrink-0 bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)] px-4 pt-3 pb-4">
+              <MiniCalendar {...calendarProps} compact />
+            </div>
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <DayPanel {...dayPanelProps} />
+            </div>
           </div>
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <DayPanel {...dayPanelProps} />
-          </div>
-        </div>
+        </PullToRefresh>
       </main>
 
       {/* New/Edit appointment modal */}
