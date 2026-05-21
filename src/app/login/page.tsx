@@ -5,24 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 const KEYS = ["1","2","3","4","5","6","7","8","9","←","0","✓"];
 const PIN_LENGTH = 4;
 
-function BanditoLogo() {
-  return (
-    <svg viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 220, height: 60 }}>
-      {/* Scissors icon */}
-      <g transform="translate(0, 6)">
-        <circle cx="8" cy="10" r="5" stroke="white" strokeWidth="1.5" fill="none"/>
-        <circle cx="8" cy="38" r="5" stroke="white" strokeWidth="1.5" fill="none"/>
-        <line x1="12" y1="7" x2="38" y2="26" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-        <line x1="12" y1="41" x2="38" y2="22" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-        <circle cx="38" cy="24" r="2" fill="white"/>
-      </g>
-      {/* STUDIO BANDITO text */}
-      <text x="52" y="20" fill="rgba(255,255,255,0.5)" fontSize="9" fontFamily="system-ui, sans-serif" letterSpacing="4" fontWeight="400">STUDIO</text>
-      <text x="50" y="46" fill="white" fontSize="24" fontFamily="system-ui, sans-serif" letterSpacing="2" fontWeight="800">BANDITO</text>
-    </svg>
-  );
-}
-
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -72,54 +54,68 @@ function LoginForm() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "#0a0a0a",
+      background: "radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      gap: "2.5rem",
+      gap: "3rem",
       padding: "1.5rem",
       fontFamily: "system-ui, -apple-system, sans-serif",
+      color: "#fff",
+      position: "relative"
     }}>
 
       {/* Brand */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.25rem" }}>
-        <BanditoLogo />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
+        <img 
+          src="/logo.png" 
+          alt="Studio Bandito Barberia" 
+          style={{ 
+            height: "140px", 
+            width: "auto", 
+            objectFit: "contain",
+            filter: "invert(1) drop-shadow(0px 4px 10px rgba(0,0,0,0.5))"
+          }} 
+        />
         <p style={{
-          color: "rgba(255,255,255,0.35)",
-          fontSize: "0.6875rem",
-          letterSpacing: "0.18em",
+          color: "rgba(255,255,255,0.4)",
+          fontSize: "0.75rem",
+          letterSpacing: "0.25em",
           textTransform: "uppercase",
           margin: 0,
         }}>
-          Ingresá tu PIN
+          Ingresá tu código
         </p>
       </div>
 
-      {/* PIN bubbles */}
-      <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-        {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              width: "3.25rem",
-              height: "3.25rem",
-              borderRadius: "50%",
-              border: `2px solid ${error ? "#ef4444" : pin.length > i ? "#fff" : "rgba(255,255,255,0.2)"}`,
-              background: error ? "#ef4444" : pin.length > i ? "#fff" : "transparent",
-              transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
-              transform: pin.length > i ? "scale(1.08)" : "scale(1)",
-            }}
-          />
-        ))}
+      {/* PIN bubbles (Elasticized) */}
+      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", height: "3rem" }}>
+        {Array.from({ length: PIN_LENGTH }).map((_, i) => {
+          const isActive = pin.length > i;
+          return (
+            <div
+              key={i}
+              style={{
+                width: isActive ? "3rem" : "1.25rem",
+                height: "1.25rem",
+                borderRadius: "1rem",
+                border: `1px solid ${error ? "#ef4444" : isActive ? "#fff" : "rgba(255,255,255,0.15)"}`,
+                background: error ? "#ef4444" : isActive ? "#fff" : "transparent",
+                transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                boxShadow: isActive && !error ? "0 0 15px rgba(255,255,255,0.2)" : "none",
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* Keypad */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
-        gap: "0.625rem",
-        width: "13.5rem",
+        gap: "0.75rem",
+        width: "16rem",
       }}>
         {KEYS.map((key) => {
           const isConfirm = key === "✓";
@@ -132,38 +128,36 @@ function LoginForm() {
               onClick={() => handleKey(key)}
               disabled={loading || (isConfirm && !canSubmit)}
               style={{
-                height: "3.875rem",
-                borderRadius: "50%",
-                fontSize: isNumber ? "1.375rem" : "1.125rem",
-                fontWeight: isNumber ? 500 : 400,
+                height: "4rem",
+                borderRadius: "1.25rem",
+                fontSize: isNumber ? "1.5rem" : "1.25rem",
+                fontWeight: isNumber ? 300 : 400,
                 cursor: loading ? "default" : "pointer",
-                transition: "all 0.1s ease",
-                border: isConfirm
-                  ? "none"
-                  : isBack
-                  ? "none"
-                  : "1.5px solid rgba(255,255,255,0.12)",
+                transition: "all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                border: "1px solid rgba(255,255,255,0.05)",
                 background: isConfirm
-                  ? canSubmit ? "#fff" : "rgba(255,255,255,0.08)"
-                  : isBack
-                  ? "transparent"
-                  : "transparent",
+                  ? canSubmit ? "#fff" : "rgba(255,255,255,0.03)"
+                  : "rgba(255,255,255,0.03)",
                 color: isConfirm
                   ? canSubmit ? "#000" : "rgba(255,255,255,0.2)"
-                  : "rgba(255,255,255,0.82)",
+                  : "rgba(255,255,255,0.8)",
                 outline: "none",
                 WebkitTapHighlightColor: "transparent",
+                backdropFilter: "blur(10px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
               }}
             >
               {key === "✓" && loading ? (
                 <span style={{
                   display: "inline-block",
-                  width: "1rem",
-                  height: "1rem",
-                  border: "2px solid rgba(0,0,0,0.3)",
+                  width: "1.25rem",
+                  height: "1.25rem",
+                  border: "2px solid rgba(0,0,0,0.1)",
                   borderTop: "2px solid #000",
                   borderRadius: "50%",
-                  animation: "spin 0.7s linear infinite",
+                  animation: "spin 0.8s linear infinite",
                 }} />
               ) : key}
             </button>
@@ -172,22 +166,38 @@ function LoginForm() {
       </div>
 
       {error && (
-        <p style={{ color: "#ef4444", fontSize: "0.8125rem", letterSpacing: "0.04em", marginTop: "-1rem" }}>
+        <p style={{ 
+          color: "#ef4444", 
+          fontSize: "0.85rem", 
+          letterSpacing: "0.05em", 
+          position: "absolute", 
+          bottom: "5rem",
+          animation: "shake 0.4s ease-in-out" 
+        }}>
           PIN incorrecto
         </p>
       )}
 
-      <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.12)", marginTop: "0.5rem" }}>
-        Desarrollado por{" "}
+      <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.15)", position: "absolute", bottom: "1.5rem", letterSpacing: "0.05em" }}>
+        DESARROLLADO POR{" "}
         <a href="https://www.feer.com.ar" target="_blank" rel="noopener noreferrer"
-          style={{ color: "inherit", textDecoration: "none" }}>
-          Feer
+          style={{ color: "#fff", textDecoration: "none", opacity: 0.8 }}>
+          FEER
         </a>
       </p>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        button:not(:disabled):active { transform: scale(0.92) !important; }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          50% { transform: translateX(5px); }
+          75% { transform: translateX(-5px); }
+        }
+        button:not(:disabled):active { 
+          transform: scale(0.95);
+          background: rgba(255,255,255,0.08) !important;
+        }
       `}</style>
     </div>
   );
@@ -195,7 +205,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100dvh", background: "#0a0a0a" }} />}>
+    <Suspense fallback={<div style={{ minHeight: "100dvh", background: "#000" }} />}>
       <LoginForm />
     </Suspense>
   );
