@@ -4,7 +4,12 @@ import { listServices, createService } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(listServices(true));
+  try {
+    return NextResponse.json(listServices(true));
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return Response.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {

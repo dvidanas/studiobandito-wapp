@@ -4,7 +4,12 @@ import { listAllResources, createResource } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json(listAllResources());
+  try {
+    return NextResponse.json(listAllResources());
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return Response.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
