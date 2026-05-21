@@ -73,7 +73,7 @@ export function TopNav() {
   };
 
   return (
-    <header className="h-14 flex-shrink-0 flex items-stretch bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] z-40">
+    <header className="h-14 flex-shrink-0 flex items-stretch justify-between bg-[var(--color-wa-header)] border-b border-[var(--color-wa-sep)] z-40">
       {/* Left: name */}
       <div className="flex items-center px-4 flex-shrink-0">
         <div className="flex flex-col leading-none">
@@ -83,7 +83,7 @@ export function TopNav() {
       </div>
 
       {/* Center: tabs */}
-      <nav className="flex-1 flex items-center justify-center overflow-x-auto">
+      <nav className="hidden md:flex flex-1 items-center justify-center overflow-x-auto">
         <div className="inline-flex items-center bg-[#f1f3f4] dark:bg-[var(--color-wa-hover)] rounded-xl p-1 gap-0.5">
           {TABS.map((tab) => {
             const isActive = pathname === tab.href;
