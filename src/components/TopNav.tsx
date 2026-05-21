@@ -82,8 +82,8 @@ export function TopNav() {
         </div>
       </div>
 
-      {/* Center: tabs — desktop only */}
-      <nav className="flex-1 hidden md:flex items-center justify-center">
+      {/* Center: tabs */}
+      <nav className="flex-1 flex items-center justify-center overflow-x-auto">
         <div className="inline-flex items-center bg-[#f1f3f4] dark:bg-[var(--color-wa-hover)] rounded-xl p-1 gap-0.5">
           {TABS.map((tab) => {
             const isActive = pathname === tab.href;
@@ -92,7 +92,7 @@ export function TopNav() {
                 key={tab.href}
                 href={tab.href}
                 title={tab.label}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   isActive
                     ? "bg-[var(--color-wa-panel-l)] text-[var(--color-wa-text-main)] shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
                     : "text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)]"

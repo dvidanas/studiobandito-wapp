@@ -155,17 +155,8 @@ export default function StaffPage() {
         {/* Left sidebar */}
         <aside className="w-full md:w-[350px] flex-shrink-0 flex flex-col bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-hidden border-r md:border border-[var(--color-wa-sep)]" style={{ boxShadow: "var(--shadow-card)" }}>
 
-          <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
+          <div className="px-4 pt-4 pb-2 flex-shrink-0">
             <span className="text-[11px] font-semibold tracking-widest uppercase text-[var(--color-wa-text-sec)]">Personal</span>
-            <button
-              onClick={() => { setAddingNew(true); setSelectedId(null); }}
-              className="flex items-center gap-1 text-xs font-semibold text-[var(--color-wa-green)] hover:opacity-75 transition-opacity"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar
-            </button>
           </div>
 
           <ul className="flex-1 overflow-y-auto px-2 pb-4 flex flex-col gap-1">
@@ -196,9 +187,20 @@ export default function StaffPage() {
 
         {/* Right panel */}
         <main
-          className={`flex-1 min-w-0 bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-y-auto p-6 md:p-8 flex flex-col gap-6 ${(!selected && !addingNew) ? "hidden md:flex" : "flex"}`}
+          className={`flex-1 min-w-0 bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-hidden flex flex-col ${(!selected && !addingNew) ? "hidden md:flex" : "flex"}`}
           style={{ boxShadow: "var(--shadow-card)" }}
         >
+          {/* Header */}
+          <div className="px-6 md:px-8 py-3 flex items-center justify-between border-b border-[var(--color-wa-sep)] flex-shrink-0">
+            <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Personal</h2>
+            <button
+              onClick={() => { setAddingNew(true); setSelectedId(null); }}
+              className="text-sm font-semibold text-[var(--color-wa-green)] hover:underline"
+            >
+              + Agregar
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 flex flex-col gap-6">
           {/* New staff form */}
           {addingNew && (
             <div className="flex flex-col gap-4">
@@ -317,6 +319,7 @@ export default function StaffPage() {
               Seleccioná un integrante del personal para ver o editar sus datos.
             </div>
           )}
+          </div>
         </main>
       </div>
 

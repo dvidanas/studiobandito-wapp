@@ -258,17 +258,8 @@ export default function ServicesPage() {
           <div className="flex-1 overflow-y-auto">
 
             {/* Servicios */}
-            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <div className="px-4 pt-4 pb-2">
               <span className="text-[11px] font-semibold tracking-widest uppercase text-[var(--color-wa-text-sec)]">Servicios</span>
-              <button
-                onClick={() => setSelection({ kind: "new-service" })}
-                className="flex items-center gap-1 text-xs font-semibold text-[var(--color-wa-green)] hover:opacity-75 transition-opacity"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Agregar
-              </button>
             </div>
 
             <ul className="px-2 pb-2 flex flex-col gap-1">
@@ -313,17 +304,8 @@ export default function ServicesPage() {
             <div className="mx-4 border-t border-[var(--color-wa-sep)]" />
 
             {/* Promociones */}
-            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <div className="px-4 pt-4 pb-2">
               <span className="text-[11px] font-semibold tracking-widest uppercase text-[var(--color-wa-text-sec)]">Promociones</span>
-              <button
-                onClick={() => setSelection({ kind: "new-promo" })}
-                className="flex items-center gap-1 text-xs font-semibold text-[var(--color-wa-green)] hover:opacity-75 transition-opacity"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Agregar
-              </button>
             </div>
 
             <ul className="px-2 pb-4 flex flex-col gap-1">
@@ -368,8 +350,30 @@ export default function ServicesPage() {
         </aside>
 
         {/* Right panel — hidden on mobile when nothing selected */}
-        <main className={`flex-1 min-w-0 bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-y-auto p-6 md:p-8 ${!selection ? "hidden md:flex" : "flex"} flex-col`} style={{ boxShadow: "var(--shadow-card)" }}>
-          <RightPanel />
+        <main className={`flex-1 min-w-0 bg-[var(--color-wa-panel-l)] md:rounded-2xl overflow-hidden ${!selection ? "hidden md:flex" : "flex"} flex-col`} style={{ boxShadow: "var(--shadow-card)" }}>
+          {/* Header */}
+          <div className="px-6 md:px-8 py-3 flex items-center justify-between border-b border-[var(--color-wa-sep)] flex-shrink-0">
+            <div>
+              <h2 className="text-base font-semibold text-[var(--color-wa-text-main)]">Servicios &amp; Promociones</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSelection({ kind: "new-service" })}
+                className="text-sm font-semibold text-[var(--color-wa-green)] hover:underline"
+              >
+                + Servicio
+              </button>
+              <button
+                onClick={() => setSelection({ kind: "new-promo" })}
+                className="text-sm font-semibold text-[var(--color-wa-green)] hover:underline"
+              >
+                + Promoción
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 md:p-8">
+            <RightPanel />
+          </div>
         </main>
       </div>
 
