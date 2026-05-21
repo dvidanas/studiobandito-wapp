@@ -115,20 +115,25 @@ function migrate(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_blocked_date ON blocked_slots(resource_id, date);
   `);
 
-  // Seed recursos desde client.config si la tabla está vacía y appointments está habilitado
-  const apptConfig = (clientConfig as Record<string, unknown>).appointments as AppointmentsConfig | undefined;
-  if (apptConfig?.enabled) {
+  // Seed recursos desde client.config si la tabla está vacía
+  {
     const count = db.prepare<[], { count: number }>("SELECT COUNT(*) as count FROM resources").get()!;
     if (count.count === 0) {
+      const appt = clientConfig.appointments as { enabled?: boolean; resource?: string } | undefined;
+      const resourceName = appt?.resource ?? clientConfig.businessName;
       const insertRes = db.prepare("INSERT INTO resources (name) VALUES (?)");
       const insertSlot = db.prepare(
         "INSERT INTO availability_slots (resource_id, day_of_week, time_start, time_end) VALUES (?, ?, ?, ?)"
       );
-      for (const name of apptConfig.resources) {
-        const r = insertRes.run(name);
-        for (const day of apptConfig.workingDays) {
-          insertSlot.run(r.lastInsertRowid, day, apptConfig.workingHours.start, apptConfig.workingHours.end);
-        }
+      const r = insertRes.run(resourceName);
+      // Disponibilidad Lun–Sáb según horarios de client.config
+      const days: Array<[number, keyof typeof clientConfig.hours]> = [
+        [1, "monday"], [2, "tuesday"], [3, "wednesday"],
+        [4, "thursday"], [5, "friday"], [6, "saturday"],
+      ];
+      for (const [dayNum, dayKey] of days) {
+        const h = clientConfig.hours[dayKey];
+        if (h) insertSlot.run(r.lastInsertRowid, dayNum, h.open, h.close);
       }
     }
   }
@@ -159,13 +164,18 @@ function migrate(db: Database.Database) {
     ins.run("business_description", clientConfig.businessDescription.trim());
   }
 
-  // Seed servicios iniciales si la tabla está vacía
+  // Seed servicios desde client.config si la tabla está vacía
   const servicesCount = db.prepare<[], { count: number }>("SELECT COUNT(*) as count FROM services").get()!;
   if (servicesCount.count === 0) {
     const ins = db.prepare("INSERT INTO services (name, description, price, duration_minutes, active) VALUES (?, ?, ?, ?, 1)");
-    ins.run("Corte de cabello / Barba", "Incluye productos", "17000", 40);
-    ins.run("Corte + Barba + Perfilado de cejas", "Incluye productos", "20000", 40);
-    ins.run("Masaje relajante", "Facial, capilar o cervical — a elección", "40000", 40);
+    for (const svc of clientConfig.services) {
+      ins.run(
+        svc.name,
+        svc.description ?? null,
+        String(svc.price),
+        svc.duration ?? clientConfig.appointmentDuration ?? 40,
+      );
+    }
   }
 
   // Migraciones incrementales (idempotentes con try/catch)
