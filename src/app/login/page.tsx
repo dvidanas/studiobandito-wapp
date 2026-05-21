@@ -69,7 +69,7 @@ function LoginForm() {
       {/* Brand */}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
         <img 
-          src="/logo.png" 
+          src="/logo.svg" 
           alt="Studio Bandito Barberia" 
           style={{ 
             height: "140px", 
