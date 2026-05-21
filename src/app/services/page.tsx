@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { TopNav, BottomNav } from "@/components/TopNav";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface Service {
   id: number;
@@ -183,6 +184,7 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [promos, setPromos] = useState<Promotion[]>([]);
   const [selection, setSelection] = useState<Selection>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ kind: "service"; item: Service } | { kind: "promo"; item: Promotion } | null>(null);
 
   const loadServices = useCallback(() =>
     fetch("/api/settings/services?all=1").then((r) => r.json()).then(setServices), []);
@@ -192,18 +194,18 @@ export default function ServicesPage() {
 
   useEffect(() => { loadServices(); loadPromos(); }, [loadServices, loadPromos]);
 
-  const deleteService = async (s: Service) => {
-    if (!window.confirm(`¿Eliminar el servicio "${s.name}"? Esta acción no se puede deshacer.`)) return;
-    await fetch(`/api/settings/services/${s.id}`, { method: "DELETE" });
-    loadServices();
-    if (selection && "item" in selection && (selection as { item: Service }).item?.id === s.id) setSelection(null);
-  };
-
-  const deletePromo = async (p: Promotion) => {
-    if (!window.confirm(`¿Eliminar la promoción "${p.title}"? Esta acción no se puede deshacer.`)) return;
-    await fetch(`/api/promotions/${p.id}`, { method: "DELETE" });
-    loadPromos();
-    if (selection && "item" in selection && (selection as { item: Promotion }).item?.id === p.id) setSelection(null);
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.kind === "service") {
+      await fetch(`/api/settings/services/${deleteTarget.item.id}`, { method: "DELETE" });
+      loadServices();
+      if (selection && "item" in selection && (selection as { item: Service }).item?.id === deleteTarget.item.id) setSelection(null);
+    } else {
+      await fetch(`/api/promotions/${deleteTarget.item.id}`, { method: "DELETE" });
+      loadPromos();
+      if (selection && "item" in selection && (selection as { item: Promotion }).item?.id === deleteTarget.item.id) setSelection(null);
+    }
+    setDeleteTarget(null);
   };
 
   const toggleService = async (s: Service) => {
@@ -290,7 +292,7 @@ export default function ServicesPage() {
                           }
                         </svg>
                       </button>
-                      <button onClick={() => deleteService(s)} className="p-1 rounded hover:bg-[var(--color-wa-hover)] text-red-500" title="Eliminar">
+                      <button onClick={() => setDeleteTarget({ kind: "service", item: s })} className="p-1 rounded hover:bg-[var(--color-wa-hover)] text-red-500" title="Eliminar">
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -336,7 +338,7 @@ export default function ServicesPage() {
                           }
                         </svg>
                       </button>
-                      <button onClick={() => deletePromo(p)} className="p-1 rounded hover:bg-[var(--color-wa-hover)] text-red-500" title="Eliminar">
+                      <button onClick={() => setDeleteTarget({ kind: "promo", item: p })} className="p-1 rounded hover:bg-[var(--color-wa-hover)] text-red-500" title="Eliminar">
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -378,6 +380,18 @@ export default function ServicesPage() {
       </div>
 
       <BottomNav />
+
+      {deleteTarget && (
+        <ConfirmDialog
+          message={
+            deleteTarget.kind === "service"
+              ? `¿Eliminar el servicio "${deleteTarget.item.name}"? Esta acción no se puede deshacer.`
+              : `¿Eliminar la promoción "${deleteTarget.item.title}"? Esta acción no se puede deshacer.`
+          }
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   );
 }

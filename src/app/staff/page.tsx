@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { TopNav, BottomNav } from "@/components/TopNav";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface Resource {
   id: number;
@@ -44,6 +45,10 @@ export default function StaffPage() {
   // Availability
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [savingAvail, setSavingAvail] = useState(false);
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadStaff = useCallback(() =>
     fetch("/api/settings/resources").then((r) => r.json()).then(setStaff), []);
@@ -107,15 +112,17 @@ export default function StaffPage() {
     }
   };
 
-  const deleteStaff = async (r: Resource) => {
-    if (!window.confirm(`¿Eliminar a "${r.name}" del personal? Esta acción no se puede deshacer.`)) return;
-    const res = await fetch(`/api/settings/resources/${r.id}`, { method: "DELETE" });
+  const confirmDeleteStaff = async () => {
+    if (!deleteTarget) return;
+    const res = await fetch(`/api/settings/resources/${deleteTarget.id}`, { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      window.alert(data.error ?? "No se pudo eliminar. Puede tener turnos activos.");
+      setDeleteError(data.error ?? "No se pudo eliminar. Puede tener turnos activos.");
+      setDeleteTarget(null);
       return;
     }
-    if (selectedId === r.id) { setSelectedId(null); setAvailability([]); }
+    if (selectedId === deleteTarget.id) { setSelectedId(null); setAvailability([]); }
+    setDeleteTarget(null);
     loadStaff();
   };
 
@@ -241,7 +248,7 @@ export default function StaffPage() {
                       {selected.active ? "Desactivar" : "Activar"}
                     </button>
                     <button
-                      onClick={() => deleteStaff(selected)}
+                      onClick={() => setDeleteTarget(selected)}
                       className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       Eliminar
@@ -324,6 +331,36 @@ export default function StaffPage() {
       </div>
 
       <BottomNav />
+
+      {deleteTarget && (
+        <ConfirmDialog
+          message={`¿Eliminar a "${deleteTarget.name}" del personal? Esta acción no se puede deshacer.`}
+          onConfirm={confirmDeleteStaff}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {deleteError && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setDeleteError(null)}
+        >
+          <div
+            className="bg-[var(--color-wa-panel-l)] rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[var(--color-wa-text-main)] text-sm font-medium mb-5">{deleteError}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setDeleteError(null)}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)] hover:bg-[var(--color-wa-green-dark)] transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
