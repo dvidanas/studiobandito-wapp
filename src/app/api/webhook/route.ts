@@ -1,9 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifySignature } from "@/lib/ycloud/verify";
 import { processWebhookPayload } from "@/lib/ycloud/handler";
-import { startBackupScheduler } from "@/lib/scheduler";
-
-startBackupScheduler();
 
 export const dynamic = "force-dynamic";
 
