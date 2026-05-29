@@ -32,7 +32,7 @@ interface AvailabilitySlot {
   time_end: string;
 }
 
-type Tab = "apariencia" | "negocio" | "servicios" | "empleados";
+type Tab = "apariencia" | "negocio" | "servicios" | "empleados" | "backup";
 
 const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const DAYS_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -352,6 +352,172 @@ function TabServicios() {
   );
 }
 
+// ── Tab: Backup ────────────────────────────────────────────────────────────────
+
+interface BackupInfo {
+  filename: string;
+  createdAt: string;
+  sizeBytes: number;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString("es-AR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+function TabBackup() {
+  const [backups, setBackups] = useState<BackupInfo[]>([]);
+  const [driveConfigured, setDriveConfigured] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [lastResult, setLastResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const load = useCallback(() => {
+    fetch("/api/backup")
+      .then((r) => r.json())
+      .then((data) => {
+        setBackups(data.backups ?? []);
+        setDriveConfigured(data.driveConfigured ?? false);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const triggerBackup = async () => {
+    setRunning(true);
+    setLastResult(null);
+    const res = await fetch("/api/backup", { method: "POST" });
+    const data = await res.json();
+    if (data.ok) {
+      setLastResult({
+        ok: true,
+        msg: `Backup creado: ${data.filename}${data.driveFileId ? " · subido a Google Drive" : ""}`,
+      });
+      load();
+    } else {
+      setLastResult({ ok: false, msg: data.error ?? "Error desconocido" });
+    }
+    setRunning(false);
+  };
+
+  const download = (filename: string) => {
+    window.open(`/api/backup?file=${encodeURIComponent(filename)}`, "_blank");
+  };
+
+  if (loading) return <div className="text-sm text-[var(--color-wa-text-sec)]">Cargando…</div>;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Estado */}
+      <Section title="Estado del backup">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-base font-medium text-[var(--color-wa-text-main)]">Backup automático</p>
+              <p className="text-sm text-[var(--color-wa-text-sec)] mt-0.5">Se ejecuta cada 24 h al arrancar el servidor</p>
+            </div>
+            <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-[var(--color-wa-green)]/15 text-[var(--color-wa-green)]">Activo</span>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-[var(--color-wa-sep)]">
+            <div>
+              <p className="text-base font-medium text-[var(--color-wa-text-main)]">Google Drive</p>
+              <p className="text-sm text-[var(--color-wa-text-sec)] mt-0.5">
+                {driveConfigured ? "Configurado — backups se suben automáticamente" : "No configurado — solo backups locales"}
+              </p>
+            </div>
+            <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${driveConfigured ? "bg-[var(--color-wa-green)]/15 text-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"}`}>
+              {driveConfigured ? "Conectado" : "Sin configurar"}
+            </span>
+          </div>
+
+          {backups[0] && (
+            <div className="flex items-center justify-between pt-2 border-t border-[var(--color-wa-sep)]">
+              <div>
+                <p className="text-sm font-medium text-[var(--color-wa-text-main)]">Último backup</p>
+                <p className="text-sm text-[var(--color-wa-text-sec)] mt-0.5">{formatDate(backups[0].createdAt)} · {formatBytes(backups[0].sizeBytes)}</p>
+              </div>
+              <button
+                onClick={() => download(backups[0].filename)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)] rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Descargar
+              </button>
+            </div>
+          )}
+        </div>
+      </Section>
+
+      {/* Acción manual */}
+      <Section title="Backup manual">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-[var(--color-wa-text-sec)]">
+            Creá un backup ahora mismo. Se guardará en el servidor y, si Google Drive está configurado, también se subirá automáticamente.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={triggerBackup}
+              disabled={running}
+              className="px-5 py-2.5 bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)] text-sm font-semibold rounded-xl hover:bg-[var(--color-wa-green-dark)] active:scale-95 disabled:opacity-50 transition-all duration-150 shadow-sm"
+            >
+              {running ? "Creando backup…" : "Crear backup ahora"}
+            </button>
+          </div>
+          {lastResult && (
+            <p className={`text-sm ${lastResult.ok ? "text-[var(--color-wa-green)]" : "text-red-500"}`}>
+              {lastResult.ok ? "✓ " : "✗ "}{lastResult.msg}
+            </p>
+          )}
+        </div>
+      </Section>
+
+      {/* Lista de backups */}
+      {backups.length > 0 && (
+        <Section title={`Backups guardados (${backups.length})`}>
+          <ul className="flex flex-col gap-1">
+            {backups.map((b) => (
+              <li key={b.filename} className="flex items-center justify-between gap-3 py-2 border-b border-[var(--color-wa-sep)] last:border-0">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-[var(--color-wa-text-main)] truncate">{formatDate(b.createdAt)}</p>
+                  <p className="text-xs text-[var(--color-wa-text-sec)]">{formatBytes(b.sizeBytes)}</p>
+                </div>
+                <button
+                  onClick={() => download(b.filename)}
+                  title="Descargar"
+                  className="p-1.5 rounded hover:bg-[var(--color-wa-hover)] text-[var(--color-wa-text-sec)] flex-shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-[var(--color-wa-text-sec)] mt-3">Se guardan los últimos 30 backups. Los más antiguos se eliminan automáticamente.</p>
+        </Section>
+      )}
+
+      {backups.length === 0 && (
+        <div className="text-center py-8 text-[var(--color-wa-text-sec)] text-sm">
+          Todavía no hay backups. El primero se creará automáticamente a los 2 minutos de arrancar el servidor.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Tab: Empleados ────────────────────────────────────────────────────────────
 
 function TabEmpleados() {
@@ -571,6 +737,15 @@ function TabEmpleados() {
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   {
+    key: "backup",
+    label: "Backup",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+      </svg>
+    ),
+  },
+  {
     key: "apariencia",
     label: "Apariencia",
     icon: (
@@ -658,6 +833,7 @@ export default function SettingsPage() {
             <div className="flex-1 overflow-y-auto p-4 md:p-6">
               <div className="max-w-2xl mx-auto">
                 <div key={tab} className="animate-in flex flex-col gap-4">
+                  {tab === "backup" && <TabBackup />}
                   {tab === "apariencia" && <TabApariencia />}
                   {tab === "negocio" && <TabNegocio />}
                   {tab === "servicios" && <TabServicios />}
