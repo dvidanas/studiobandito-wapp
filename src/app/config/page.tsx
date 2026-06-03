@@ -127,7 +127,7 @@ function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
 // ── Card wrapper ─────────────────────────────────────────────────────────────
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[var(--color-wa-panel-l)] rounded-2xl border border-[var(--color-wa-sep)] overflow-hidden">
+    <div className="bg-[var(--color-wa-panel-l)] rounded-2xl border border-[var(--color-wa-sep)] shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="px-5 py-3.5 border-b border-[var(--color-wa-sep)]">
         <h3 className="text-[11px] font-semibold tracking-widest uppercase text-[var(--color-wa-text-sec)]">{title}</h3>
       </div>
@@ -487,38 +487,39 @@ function SectionHorarios({ onSaved }: { onSaved: () => void }) {
           const slot = hours[day];
           const isOpen = slot !== null && slot !== undefined;
           return (
-            <div key={day} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${isOpen ? "bg-[var(--color-wa-bg-main)] border-[var(--color-wa-sep)]" : "bg-transparent border-[var(--color-wa-sep)]/40"}`}>
-              <button
-                onClick={() => toggle(day)}
-                className={`relative w-10 h-5.5 rounded-full transition-colors flex-shrink-0 ${isOpen ? "bg-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)]"}`}
-                style={{ height: "22px", width: "40px" }}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transition-transform ${isOpen ? "translate-x-[18px]" : ""}`}
-                  style={{ width: "18px", height: "18px" }}
-                />
-              </button>
-              <span className={`w-24 text-sm font-medium flex-shrink-0 ${isOpen ? "text-[var(--color-wa-text-main)]" : "text-[var(--color-wa-text-sec)]"}`}>
-                {DAYS_ES[day]}
-              </span>
-              {isOpen ? (
-                <div className="flex items-center gap-2 flex-1">
+            <div key={day} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 rounded-xl border transition-colors border-[var(--color-wa-sep)] ${isOpen ? "bg-[var(--color-wa-bg-main)]" : "bg-transparent"}`}>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => toggle(day)}
+                  className={`relative rounded-full transition-colors flex-shrink-0 ${isOpen ? "bg-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)]"}`}
+                  style={{ height: "22px", width: "40px" }}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 bg-white rounded-full shadow transition-transform ${isOpen ? "translate-x-[18px]" : ""}`}
+                    style={{ width: "18px", height: "18px" }}
+                  />
+                </button>
+                <span className={`w-24 text-sm font-medium flex-shrink-0 ${isOpen ? "text-[var(--color-wa-text-main)]" : "text-[var(--color-wa-text-sec)]"}`}>
+                  {DAYS_ES[day]}
+                </span>
+                {!isOpen && <span className="text-xs text-[var(--color-wa-text-sec)]">Cerrado</span>}
+              </div>
+              {isOpen && (
+                <div className="flex items-center gap-2 flex-1 pl-[52px] sm:pl-0">
                   <input
                     type="time"
-                    className={INPUT + " w-32"}
+                    className="flex-1 sm:flex-none sm:w-32 bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-2 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] focus:ring-2 focus:ring-[var(--color-wa-green)]/20 transition-colors"
                     value={(slot as { open: string; close: string }).open}
                     onChange={(e) => updateTime(day, "open", e.target.value)}
                   />
-                  <span className="text-[var(--color-wa-text-sec)] text-sm">a</span>
+                  <span className="text-[var(--color-wa-text-sec)] text-sm flex-shrink-0">a</span>
                   <input
                     type="time"
-                    className={INPUT + " w-32"}
+                    className="flex-1 sm:flex-none sm:w-32 bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-2 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] focus:ring-2 focus:ring-[var(--color-wa-green)]/20 transition-colors"
                     value={(slot as { open: string; close: string }).close}
                     onChange={(e) => updateTime(day, "close", e.target.value)}
                   />
                 </div>
-              ) : (
-                <span className="text-xs text-[var(--color-wa-text-sec)]">Cerrado</span>
               )}
             </div>
           );
@@ -815,16 +816,17 @@ function SectionPersonal() {
               {WEEK_DAYS.map((d, i) => {
                 const slot = availability.find((s) => s.day_of_week === i);
                 return (
-                  <div key={i} className="flex items-center gap-3">
-                    <button onClick={() => toggleDay(i)} className={`w-11 text-xs font-semibold py-1.5 rounded-lg transition-colors ${slot ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)]" : "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"}`}>{d}</button>
-                    {slot ? (
-                      <>
-                        <input type="time" value={slot.time_start} onChange={(e) => updateAvailTime(i, "time_start", e.target.value)} className="bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
-                        <span className="text-sm text-[var(--color-wa-text-sec)]">a</span>
-                        <input type="time" value={slot.time_end} onChange={(e) => updateAvailTime(i, "time_end", e.target.value)} className="bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
-                      </>
-                    ) : (
-                      <span className="text-sm text-[var(--color-wa-text-sec)]">{WEEK_DAYS_FULL[i]} — sin atención</span>
+                  <div key={i} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl border border-[var(--color-wa-sep)] transition-colors ${slot ? "bg-[var(--color-wa-bg-main)]" : "bg-transparent"}`}>
+                    <div className="flex items-center gap-2.5">
+                      <button onClick={() => toggleDay(i)} className={`w-11 text-xs font-semibold py-1.5 rounded-lg flex-shrink-0 transition-colors ${slot ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)]" : "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"}`}>{d}</button>
+                      {!slot && <span className="text-sm text-[var(--color-wa-text-sec)]">{WEEK_DAYS_FULL[i]} — sin atención</span>}
+                    </div>
+                    {slot && (
+                      <div className="flex items-center gap-2 flex-1 pl-[52px] sm:pl-0">
+                        <input type="time" value={slot.time_start} onChange={(e) => updateAvailTime(i, "time_start", e.target.value)} className="flex-1 sm:flex-none bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
+                        <span className="text-sm text-[var(--color-wa-text-sec)] flex-shrink-0">a</span>
+                        <input type="time" value={slot.time_end} onChange={(e) => updateAvailTime(i, "time_end", e.target.value)} className="flex-1 sm:flex-none bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
+                      </div>
                     )}
                   </div>
                 );
@@ -1025,7 +1027,7 @@ export default function ConfigPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[var(--color-wa-bg-main)]">
+    <div className="flex flex-col h-dvh overflow-hidden bg-[var(--color-wa-bg-main)]">
       <TopNav />
 
       <div className="flex flex-1 overflow-hidden">
