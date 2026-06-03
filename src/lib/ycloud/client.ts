@@ -23,6 +23,14 @@ export async function sendTextMessage(
   return { wa_message_id: id };
 }
 
+export async function markMessageRead(waMessageId: string): Promise<void> {
+  const apiKey = process.env.YCLOUD_API_KEY!;
+  await fetch(`${BASE}/whatsapp/messages/${waMessageId}/markAsRead`, {
+    method: "POST",
+    headers: { "X-API-Key": apiKey },
+  });
+}
+
 export async function getPhoneNumberInfo(): Promise<{
   display_phone_number: string;
   status: string;

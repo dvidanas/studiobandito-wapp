@@ -14,10 +14,11 @@ import {
   getAvailableSlots,
   createAppointment,
   hasAppointmentForSlot,
+  setMode,
   type AvailableSlot,
 } from "@/lib/db";
 import { getChatCompletion, getRawCompletion, type ChatMessage } from "@/lib/gemini";
-import { sendTextMessage } from "./client";
+import { sendTextMessage, markMessageRead } from "./client";
 import { clientConfig } from "@/lib/client.config";
 
 const DELAY = clientConfig.responseDelayMs ?? 8000;
@@ -99,8 +100,6 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     (m) => m.role === "user" && isEngagedMessage(m.content)
   ).length;
 
-  const isFirstBotMessage = !history.some((m) => m.role === "assistant");
-
   // Disponibilidad de turnos si está habilitado
   const apptConfig = (clientConfig as Record<string, unknown>).appointments as
     | { enabled: boolean; defaultDuration: number }
@@ -125,23 +124,7 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     }
   }
 
-  const firstMsgInstruction = isFirstBotMessage
-    ? "Es tu PRIMER mensaje en esta conversación. " +
-      `Saludá, presentá brevemente a ${clientConfig.businessName} en una sola oración (ej: ${clientConfig.businessDescription}), ` +
-      "y preguntá qué tipo de servicio está buscando. " +
-      "Todo en un único mensaje corto y directo, sin listas ni saltos de línea."
-    : undefined;
-
-  const contactInstruction =
-    engagedCount >= 4
-      ? "El usuario ya respondió varias preguntas y hay contexto suficiente. " +
-        "Es el momento de proponer que alguien del equipo lo contacte. " +
-        "Cerrá tu respuesta con algo como '¿Querés que alguien del equipo te contacte para charlar unos minutos?' " +
-        "o '¿Te parece si coordinamos una charla rápida con alguien del equipo?'" +
-        availabilityNote
-      : availabilityNote || undefined;
-
-  const extraInstruction = [firstMsgInstruction, contactInstruction].filter(Boolean).join(" ") || undefined;
+  const extraInstruction = availabilityNote || undefined;
 
   const t0 = Date.now();
   let rawReply: string;
@@ -158,7 +141,24 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     return;
   }
 
-  const reply = rawReply.replace(/\n+/g, " ").trim();
+  const rawTrimmed = rawReply.trim();
+
+  // Derivar a humano si Gemini no sabe responder
+  if (rawTrimmed.includes("[[DERIVAR_HUMANO]]")) {
+    console.log(`[wh] derivando a humano para +${phone}`);
+    setMode(convoId, "HUMAN");
+    const fallback = "Disculpá, para esa consulta te paso con alguien del equipo. En un momento te atienden 🙏";
+    const messageId = insertMessage(convoId, "assistant", fallback, null);
+    try {
+      const { wa_message_id } = await sendTextMessage(phone, fallback);
+      updateMessageWaId(messageId, wa_message_id);
+    } catch (err) {
+      console.error(`[wh] error al enviar fallback a +${phone}:`, err);
+    }
+    return;
+  }
+
+  const reply = rawTrimmed.replace(/\n+/g, " ");
 
   const messageId = insertMessage(convoId, "assistant", reply, null);
 
@@ -318,6 +318,9 @@ async function handleIncomingMessage(
   const phone = rawPhone.startsWith("+") ? rawPhone.slice(1) : rawPhone;
 
   console.log(`[wh] ← de +${phone}: "${text.slice(0, 60)}"`);
+
+  // Marcar como leído inmediatamente (ticks azules → sensación de presencia humana)
+  markMessageRead(waId).catch(() => {});
 
   // 5. Conversación
   const convo = getOrCreateConversation(phone, senderName);
