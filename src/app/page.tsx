@@ -230,19 +230,29 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
                 onBack={handleBack}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center px-8">
-                <div className="w-[200px] sm:w-[280px] mb-8">
-                  <svg viewBox="0 0 100 100" className="w-full text-[var(--color-wa-text-sec)] opacity-20">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" />
-                    <path d="M50 25v25l15 15" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+              <div className="flex flex-col items-center justify-center h-full text-center px-8 bg-gradient-to-b from-transparent to-[var(--color-wa-hover)]/30">
+                <div className="relative w-32 h-32 md:w-40 md:h-40 mb-8 rounded-full bg-gradient-to-br from-white to-[var(--bg-main)] dark:from-[var(--bg-panel-l)] dark:to-[var(--bg-main)] border border-[var(--color-wa-sep)]/60 flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-105">
+                  {/* Subtle pulsing background glow */}
+                  <span className="absolute inset-0 rounded-full bg-[var(--color-wa-green)]/5 animate-ping opacity-60" style={{ animationDuration: '4s' }} />
+                  
+                  {/* Stylized Barbershop Logo SVG (Scissors crossing) */}
+                  <svg className="w-16 h-16 md:w-20 md:h-20 text-[var(--color-wa-green)] filter drop-shadow-[0_4px_6px_rgba(168,133,68,0.15)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.25}>
+                    <circle cx="7" cy="8" r="2.5" />
+                    <circle cx="7" cy="16" r="2.5" />
+                    <path strokeLinecap="round" d="M9.5 9.5L20 18M9.5 14.5L20 6" />
+                    <path strokeLinecap="round" d="M14 8v8M16 8v8M18 8v8" opacity="0.3" strokeDasharray="1 1" />
                   </svg>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-light text-[var(--color-wa-text-main)] mb-4">
-                  Amalia, asistente de Studio Bandito
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--color-wa-text-main)] mb-3">
+                  Studio Bandito
                 </h1>
-                <p className="text-sm text-[var(--color-wa-text-sec)] max-w-md">
-                  Seleccioná un chat para ver los mensajes.
+                <p className="text-sm font-medium text-[var(--color-wa-text-sec)] max-w-sm mb-6">
+                  Amalia está en línea y gestionando las conversaciones automáticas.
                 </p>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] shadow-sm text-xs font-semibold text-[var(--color-wa-text-sec)]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Listo para recibir consultas
+                </div>
               </div>
             )}
           </main>

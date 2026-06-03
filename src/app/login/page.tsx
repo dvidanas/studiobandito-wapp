@@ -54,26 +54,56 @@ function LoginForm() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: "radial-gradient(circle at 50% 0%, #ffffff 0%, #f0f0f3 100%)",
+      background: "radial-gradient(circle at 50% 0%, var(--bg-panel-l) 0%, var(--bg-main) 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      gap: "3rem",
+      gap: "2.5rem",
       padding: "1.5rem",
-      fontFamily: "system-ui, -apple-system, sans-serif",
-      color: "#1a1a1a",
+      fontFamily: "var(--font-sans), system-ui, -apple-system, sans-serif",
+      color: "var(--text-main)",
       position: "relative"
     }}>
 
       {/* Brand */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+        <div style={{
+          width: "4.5rem",
+          height: "4.5rem",
+          borderRadius: "50%",
+          background: "radial-gradient(circle, var(--bg-panel-r) 0%, var(--bg-input) 100%)",
+          border: "2.5px solid var(--wa-green)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "var(--shadow-card)",
+          color: "var(--wa-green)",
+          marginBottom: "0.5rem"
+        }}>
+          <svg style={{ width: "2rem", height: "2rem" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="6" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <line x1="9.8" y1="8.2" x2="20" y2="17" />
+            <line x1="9.8" y1="15.8" x2="20" y2="7" />
+          </svg>
+        </div>
+        <h1 style={{
+          fontSize: "1.5rem",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          color: "var(--text-main)",
+          margin: 0,
+        }}>
+          STUDIO BANDITO
+        </h1>
         <p style={{
-          color: "rgba(0,0,0,0.5)",
+          color: "var(--text-sec)",
           fontSize: "0.75rem",
-          letterSpacing: "0.25em",
+          letterSpacing: "0.15em",
           textTransform: "uppercase",
           margin: 0,
+          fontWeight: 500
         }}>
           Ingresá tu código
         </p>
@@ -90,10 +120,10 @@ function LoginForm() {
                 width: isActive ? "3rem" : "1.25rem",
                 height: "1.25rem",
                 borderRadius: "1rem",
-                border: `1.5px solid ${error ? "#ef4444" : isActive ? "#222" : "rgba(0,0,0,0.15)"}`,
-                background: error ? "#ef4444" : isActive ? "#222" : "transparent",
+                border: `1.5px solid ${error ? "#ef4444" : isActive ? "var(--wa-green)" : "var(--color-sep)"}`,
+                background: error ? "#ef4444" : isActive ? "var(--wa-green)" : "transparent",
                 transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                boxShadow: isActive && !error ? "0 4px 10px rgba(0,0,0,0.15)" : "none",
+                boxShadow: isActive && !error ? "0 4px 12px rgba(168,133,68,0.15)" : "none",
               }}
             />
           );
@@ -124,16 +154,16 @@ function LoginForm() {
                 fontWeight: isNumber ? 500 : 400,
                 cursor: loading ? "default" : "pointer",
                 transition: "all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-                border: "1px solid rgba(0,0,0,0.06)",
+                border: "1px solid var(--color-sep)",
                 background: isConfirm
-                  ? canSubmit ? "#222" : "rgba(0,0,0,0.04)"
-                  : "rgba(0,0,0,0.03)",
+                  ? canSubmit ? "var(--wa-green)" : "var(--bg-hover)"
+                  : "var(--bg-input)",
                 color: isConfirm
-                  ? canSubmit ? "#fff" : "rgba(0,0,0,0.2)"
-                  : "rgba(0,0,0,0.7)",
+                  ? canSubmit ? "var(--wa-green-text)" : "var(--text-sec)"
+                  : "var(--text-main)",
                 outline: "none",
                 WebkitTapHighlightColor: "transparent",
-                boxShadow: isNumber ? "0 2px 5px rgba(0,0,0,0.02)" : "none",
+                boxShadow: isNumber ? "var(--shadow-card)" : "none",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center"
@@ -144,8 +174,8 @@ function LoginForm() {
                   display: "inline-block",
                   width: "1.25rem",
                   height: "1.25rem",
-                  border: "2px solid rgba(0,0,0,0.1)",
-                  borderTop: "2px solid #fff",
+                  border: "2px solid rgba(255,255,255,0.1)",
+                  borderTop: `2px solid ${canSubmit ? "var(--wa-green-text)" : "var(--text-main)"}`,
                   borderRadius: "50%",
                   animation: "spin 0.8s linear infinite",
                 }} />
@@ -168,10 +198,10 @@ function LoginForm() {
         </p>
       )}
 
-      <p style={{ fontSize: "11px", color: "rgba(0,0,0,0.3)", position: "absolute", bottom: "1.5rem", letterSpacing: "0.05em" }}>
+      <p style={{ fontSize: "11px", color: "var(--text-sec)", opacity: 0.6, position: "absolute", bottom: "1.5rem", letterSpacing: "0.05em" }}>
         DESARROLLADO POR{" "}
         <a href="https://www.feer.com.ar" target="_blank" rel="noopener noreferrer"
-          style={{ color: "#222", textDecoration: "none", fontWeight: 600 }}>
+          style={{ color: "var(--wa-green)", textDecoration: "none", fontWeight: 600 }}>
           FEER
         </a>
       </p>
@@ -186,7 +216,7 @@ function LoginForm() {
         }
         button:not(:disabled):active { 
           transform: scale(0.95);
-          background: rgba(0,0,0,0.08) !important;
+          background: var(--bg-hover) !important;
         }
       `}</style>
     </div>

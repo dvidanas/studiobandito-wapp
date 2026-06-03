@@ -58,20 +58,20 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <span
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                  className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border transition-colors ${
                     c.mode === "AI"
-                      ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)]"
-                      : "bg-amber-500 text-[var(--color-wa-green-text)]"
+                      ? "bg-[var(--color-wa-green)]/10 text-[var(--color-wa-green)] border-[var(--color-wa-green)]/20"
+                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                   }`}
                 >
                   {c.mode === "AI" ? "IA" : "HUMANO"}
                 </span>
                 {c.has_lead === 1 && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500 text-white">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                     LEAD
                   </span>
                 )}
-                <span className="text-sm text-[var(--color-wa-text-sec)] truncate">
+                <span className="text-xs text-[var(--color-wa-text-sec)] truncate">
                   último mensaje...
                 </span>
               </div>

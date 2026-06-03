@@ -25,13 +25,13 @@ export function MessageBubble({ message }: Props) {
 
   return (
     <div
-      className={`flex ${isIncoming ? "justify-start" : "justify-end"} mb-1.5`}
+      className={`flex ${isIncoming ? "justify-start" : "justify-end"} mb-2.5`}
     >
       <div
-        className={`relative max-w-[85%] sm:max-w-[70%] px-2.5 pt-1.5 pb-1.5 text-[14.2px] leading-[19px] shadow-sm ${
+        className={`relative max-w-[85%] sm:max-w-[70%] px-3.5 pt-2 pb-2.5 text-[14.5px] leading-[20px] shadow-sm transition-all ${
           isIncoming
-            ? "bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-text-main)] rounded-lg rounded-tl-none"
-            : "bg-[var(--color-wa-bubble-out)] text-[var(--color-wa-text-main)] rounded-lg rounded-tr-none"
+            ? "bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-text-main)] rounded-2xl rounded-tl-sm border border-[var(--color-wa-sep)]/30"
+            : "bg-[var(--color-wa-bubble-out)] text-[var(--color-wa-text-main)] rounded-2xl rounded-tr-sm border border-[var(--color-wa-green)]/15"
         }`}
       >
         {(isAssistant || isHuman) && (
