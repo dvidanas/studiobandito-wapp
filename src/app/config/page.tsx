@@ -1030,9 +1030,9 @@ export default function ConfigPage() {
     <div className="flex flex-col h-dvh overflow-hidden bg-[var(--color-wa-bg-main)]">
       <TopNav />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden md:p-3 md:gap-3">
         {/* Sidebar desktop */}
-        <aside className="w-56 flex-shrink-0 border-r border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] overflow-y-auto hidden md:flex flex-col py-4 px-3 gap-1">
+        <aside className="hidden md:flex w-[350px] flex-shrink-0 bg-[var(--color-wa-panel-l)] flex-col rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden py-4 px-3 gap-1">
           <p className="text-[10px] font-semibold tracking-widest uppercase text-[var(--color-wa-text-sec)] px-3 mb-2">Configuración</p>
           {SECTIONS.map((s) => (
             <button
@@ -1051,7 +1051,7 @@ export default function ConfigPage() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-0">
           {/* Mobile section pills */}
           <div className="md:hidden flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-hide">
             {SECTIONS.map((s) => (
