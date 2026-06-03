@@ -898,3 +898,32 @@ export function setAvailabilityForResource(
   const ins = db.prepare("INSERT INTO availability_slots (resource_id, day_of_week, time_start, time_end) VALUES (?, ?, ?, ?)");
   for (const s of slots) ins.run(resourceId, s.day_of_week, s.time_start, s.time_end);
 }
+
+// ── Closed dates (special closed days) ──────────────────────
+
+export function listClosedDates(): string[] {
+  const raw = getSetting("closed_dates");
+  if (!raw) return [];
+  try { return JSON.parse(raw) as string[]; } catch { return []; }
+}
+
+export function addClosedDate(date: string): void {
+  const db = getDb();
+  const dates = listClosedDates();
+  if (!dates.includes(date)) {
+    setSetting("closed_dates", JSON.stringify([...dates, date].sort()));
+  }
+  const resources = db.prepare<[], { id: number }>("SELECT id FROM resources WHERE active = 1").all();
+  const insert = db.prepare(
+    "INSERT OR IGNORE INTO blocked_slots (resource_id, date, time_start, time_end, reason) VALUES (?, ?, '00:00', '23:59', 'closed')"
+  );
+  for (const r of resources) insert.run(r.id, date);
+}
+
+export function removeClosedDate(date: string): void {
+  const dates = listClosedDates().filter((d) => d !== date);
+  setSetting("closed_dates", JSON.stringify(dates));
+  getDb()
+    .prepare("DELETE FROM blocked_slots WHERE date = ? AND time_start = '00:00' AND time_end = '23:59' AND reason = 'closed'")
+    .run(date);
+}
