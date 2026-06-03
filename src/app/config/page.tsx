@@ -37,7 +37,7 @@ interface Promotion {
   active: number;
 }
 
-type Section = "negocio" | "servicios" | "promociones" | "horarios" | "cerrados";
+type Section = "negocio" | "servicios" | "promociones" | "horarios" | "cerrados" | "personal" | "backup";
 
 const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
   {
@@ -82,6 +82,24 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+      </svg>
+    ),
+  },
+  {
+    id: "personal",
+    label: "Personal",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "backup",
+    label: "Backup",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
       </svg>
     ),
   },
@@ -596,6 +614,396 @@ function SectionCerrados({ onSaved }: { onSaved: () => void }) {
   );
 }
 
+// ── Section: Personal ────────────────────────────────────────────────────────
+interface Resource {
+  id: number;
+  name: string;
+  phone: string | null;
+  active: number;
+}
+interface AvailSlot {
+  id: number;
+  resource_id: number;
+  day_of_week: number;
+  time_start: string;
+  time_end: string;
+}
+const WEEK_DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const WEEK_DAYS_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+function SectionPersonal() {
+  const [staff, setStaff] = useState<Resource[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [addingNew, setAddingNew] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [availability, setAvailability] = useState<AvailSlot[]>([]);
+  const [savingAvail, setSavingAvail] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const loadStaff = useCallback(() =>
+    fetch("/api/settings/resources").then((r) => r.json()).then(setStaff), []);
+
+  useEffect(() => { loadStaff(); }, [loadStaff]);
+
+  const loadAvailability = useCallback(async (id: number) => {
+    const slots: AvailSlot[] = await fetch(`/api/settings/resources/${id}`).then((r) => r.json());
+    setAvailability(slots);
+  }, []);
+
+  const selectStaff = (r: Resource) => {
+    setSelectedId(r.id);
+    setEditName(r.name);
+    setEditPhone(r.phone ?? "");
+    setAddingNew(false);
+    loadAvailability(r.id);
+  };
+
+  const createStaff = async () => {
+    if (!newName.trim()) return;
+    setCreating(true);
+    const res = await fetch("/api/settings/resources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim(), phone: newPhone.trim() || null }),
+    });
+    const { id } = await res.json();
+    setCreating(false);
+    setNewName(""); setNewPhone(""); setAddingNew(false);
+    await loadStaff();
+    const all: Resource[] = await fetch("/api/settings/resources").then((r) => r.json());
+    const created = all.find((r) => r.id === id);
+    if (created) selectStaff(created);
+  };
+
+  const saveInfo = async () => {
+    if (!selectedId || !editName.trim()) return;
+    setSavingInfo(true);
+    await fetch(`/api/settings/resources/${selectedId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editName.trim(), phone: editPhone.trim() || null }),
+    });
+    setSavingInfo(false);
+    loadStaff();
+  };
+
+  const toggleActive = async (r: Resource) => {
+    await fetch(`/api/settings/resources/${r.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: r.active ? 0 : 1 }),
+    });
+    loadStaff();
+  };
+
+  const confirmDeleteStaff = async () => {
+    if (!deleteTarget) return;
+    const res = await fetch(`/api/settings/resources/${deleteTarget.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error ?? "No se pudo eliminar. Puede tener turnos activos.");
+      setDeleteTarget(null);
+      return;
+    }
+    if (selectedId === deleteTarget.id) { setSelectedId(null); setAvailability([]); }
+    setDeleteTarget(null);
+    loadStaff();
+  };
+
+  const toggleDay = (day: number) => {
+    if (!selectedId) return;
+    const exists = availability.some((s) => s.day_of_week === day);
+    setAvailability((prev) =>
+      exists
+        ? prev.filter((s) => s.day_of_week !== day)
+        : [...prev, { id: 0, resource_id: selectedId, day_of_week: day, time_start: "09:00", time_end: "18:00" }]
+    );
+  };
+
+  const updateAvailTime = (day: number, field: "time_start" | "time_end", val: string) => {
+    setAvailability((prev) => prev.map((s) => s.day_of_week === day ? { ...s, [field]: val } : s));
+  };
+
+  const saveAvailability = async () => {
+    if (!selectedId) return;
+    setSavingAvail(true);
+    await fetch(`/api/settings/resources/${selectedId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ availability: availability.map(({ day_of_week, time_start, time_end }) => ({ day_of_week, time_start, time_end })) }),
+    });
+    setSavingAvail(false);
+  };
+
+  const selected = staff.find((r) => r.id === selectedId) ?? null;
+
+  return (
+    <div className="flex gap-4 h-full min-h-[400px]">
+      {/* Staff list */}
+      <Card title="Integrantes">
+        <div className="flex flex-col gap-2 min-w-[180px]">
+          {staff.length === 0 && !addingNew && (
+            <p className="text-sm text-[var(--color-wa-text-sec)] py-1">Sin personal aún.</p>
+          )}
+          {staff.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => selectStaff(r)}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors w-full ${selectedId === r.id ? "bg-[var(--color-wa-green)]/10 text-[var(--color-wa-text-main)]" : "hover:bg-[var(--color-wa-hover)] text-[var(--color-wa-text-sec)]"} ${!r.active ? "opacity-50" : ""}`}
+            >
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${r.active ? "bg-[var(--color-wa-green)]/15 text-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"}`}>
+                {r.name.charAt(0).toUpperCase()}
+              </div>
+              <span className={`text-sm font-medium truncate ${!r.active ? "line-through" : ""}`}>{r.name}</span>
+            </button>
+          ))}
+          {addingNew && (
+            <div className="flex flex-col gap-2 mt-1 p-3 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-green)]/40">
+              <input className={INPUT} placeholder="Nombre *" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createStaff()} />
+              <input className={INPUT} placeholder="Teléfono" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+              <div className="flex gap-2">
+                <button className={BTN_PRIMARY} onClick={createStaff} disabled={creating || !newName.trim()}>{creating ? "…" : "Crear"}</button>
+                <button className={BTN_GHOST} onClick={() => setAddingNew(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+          {!addingNew && (
+            <button onClick={() => { setAddingNew(true); setSelectedId(null); }} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-[var(--color-wa-sep)] text-sm text-[var(--color-wa-text-sec)] hover:border-[var(--color-wa-green)] hover:text-[var(--color-wa-green)] transition-colors mt-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+              Agregar
+            </button>
+          )}
+        </div>
+      </Card>
+
+      {/* Detail panel */}
+      {selected && (
+        <div className="flex-1 flex flex-col gap-4">
+          <Card title="Datos del integrante">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-semibold text-[var(--color-wa-text-main)]">{selected.name}</span>
+              <div className="flex gap-2">
+                <button onClick={() => toggleActive(selected)} className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${selected.active ? "border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] hover:border-amber-400 hover:text-amber-500" : "border-[var(--color-wa-green)]/40 text-[var(--color-wa-green)] hover:bg-[var(--color-wa-green)]/10"}`}>
+                  {selected.active ? "Desactivar" : "Activar"}
+                </button>
+                <button onClick={() => setDeleteTarget(selected)} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                  Eliminar
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Nombre *</label>
+                <input className={INPUT} value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Teléfono</label>
+                <input className={INPUT} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="2646123456" />
+              </div>
+            </div>
+            <button onClick={saveInfo} disabled={savingInfo || !editName.trim()} className={BTN_PRIMARY}>{savingInfo ? "Guardando…" : "Guardar datos"}</button>
+          </Card>
+
+          <Card title="Disponibilidad semanal">
+            <div className="flex flex-col gap-2 mb-4">
+              {WEEK_DAYS.map((d, i) => {
+                const slot = availability.find((s) => s.day_of_week === i);
+                return (
+                  <div key={i} className="flex items-center gap-3">
+                    <button onClick={() => toggleDay(i)} className={`w-11 text-xs font-semibold py-1.5 rounded-lg transition-colors ${slot ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)]" : "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"}`}>{d}</button>
+                    {slot ? (
+                      <>
+                        <input type="time" value={slot.time_start} onChange={(e) => updateAvailTime(i, "time_start", e.target.value)} className="bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
+                        <span className="text-sm text-[var(--color-wa-text-sec)]">a</span>
+                        <input type="time" value={slot.time_end} onChange={(e) => updateAvailTime(i, "time_end", e.target.value)} className="bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
+                      </>
+                    ) : (
+                      <span className="text-sm text-[var(--color-wa-text-sec)]">{WEEK_DAYS_FULL[i]} — sin atención</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={saveAvailability} disabled={savingAvail} className={BTN_PRIMARY}>{savingAvail ? "Guardando…" : "Guardar disponibilidad"}</button>
+          </Card>
+        </div>
+      )}
+
+      {!selected && !addingNew && (
+        <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-wa-text-sec)]">
+          Seleccioná un integrante para ver sus datos.
+        </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          message={`¿Eliminar a "${deleteTarget.name}" del personal? Esta acción no se puede deshacer.`}
+          onConfirm={confirmDeleteStaff}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+      {deleteError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setDeleteError(null)}>
+          <div className="bg-[var(--color-wa-panel-l)] rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[var(--color-wa-text-main)] text-sm font-medium mb-5">{deleteError}</p>
+            <div className="flex justify-end">
+              <button onClick={() => setDeleteError(null)} className={BTN_PRIMARY}>Entendido</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section: Backup ──────────────────────────────────────────────────────────
+interface BackupInfo {
+  name: string;
+  size: number;
+  createdAt: string;
+}
+interface BackupStatus {
+  backups: BackupInfo[];
+  driveConfigured: boolean;
+  lastBackup: BackupInfo | null;
+}
+
+function SectionBackup() {
+  const [status, setStatus] = useState<BackupStatus | null>(null);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message?: string; error?: string } | null>(null);
+
+  const load = useCallback(() => {
+    fetch("/api/backup").then((r) => r.json()).then(setStatus);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const runBackup = async () => {
+    setRunning(true);
+    setResult(null);
+    const r = await fetch("/api/backup", { method: "POST" });
+    const data = await r.json();
+    setResult(data);
+    setRunning(false);
+    load();
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch { return iso; }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card title="Backup de datos">
+        <p className="text-xs text-[var(--color-wa-text-sec)] mb-5">
+          El sistema realiza backups automáticos cada 24 h. Podés forzar uno manual en cualquier momento. Los backups incluyen todos los datos: turnos, mensajes, contactos, configuraciones.
+        </p>
+
+        {/* Status row */}
+        <div className="flex flex-wrap gap-3 mb-5">
+          <div className="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)]">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-wa-text-sec)] mb-1">Último backup</p>
+            {status?.lastBackup ? (
+              <>
+                <p className="text-sm font-medium text-[var(--color-wa-text-main)]">{formatDate(status.lastBackup.createdAt)}</p>
+                <p className="text-xs text-[var(--color-wa-text-sec)]">{formatSize(status.lastBackup.size)}</p>
+              </>
+            ) : (
+              <p className="text-sm text-[var(--color-wa-text-sec)]">Sin backups aún</p>
+            )}
+          </div>
+          <div className="flex-1 min-w-[120px] px-4 py-3 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)]">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-wa-text-sec)] mb-1">Backups locales</p>
+            <p className="text-sm font-medium text-[var(--color-wa-text-main)]">{status?.backups.length ?? "—"}</p>
+            <p className="text-xs text-[var(--color-wa-text-sec)]">máx. 30 archivos</p>
+          </div>
+          <div className="flex-1 min-w-[120px] px-4 py-3 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)]">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-wa-text-sec)] mb-1">Google Drive</p>
+            <div className={`flex items-center gap-1.5 mt-1`}>
+              <div className={`w-2 h-2 rounded-full ${status?.driveConfigured ? "bg-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)]"}`} />
+              <span className="text-sm font-medium text-[var(--color-wa-text-main)]">{status?.driveConfigured ? "Configurado" : "No configurado"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button onClick={runBackup} disabled={running} className={BTN_PRIMARY + " flex items-center gap-2"}>
+            {running ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Haciendo backup…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+                Hacer backup ahora
+              </>
+            )}
+          </button>
+          {result && (
+            <span className={`text-sm font-medium ${result.ok ? "text-[var(--color-wa-green)]" : "text-red-500"}`}>
+              {result.ok ? "✓ Backup completado" : `Error: ${result.error ?? "desconocido"}`}
+            </span>
+          )}
+        </div>
+      </Card>
+
+      {/* Backup list */}
+      {status && status.backups.length > 0 && (
+        <Card title="Historial de backups">
+          <div className="flex flex-col gap-1.5">
+            {status.backups.slice(0, 10).map((b) => (
+              <div key={b.name} className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)]">
+                <svg className="w-4 h-4 text-[var(--color-wa-text-sec)] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-[var(--color-wa-text-main)] truncate">{b.name}</p>
+                  <p className="text-xs text-[var(--color-wa-text-sec)]">{formatDate(b.createdAt)} · {formatSize(b.size)}</p>
+                </div>
+                <a
+                  href={`/api/backup?file=${encodeURIComponent(b.name)}`}
+                  download
+                  className="p-1.5 rounded-lg text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)] transition-colors"
+                  title="Descargar"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </a>
+              </div>
+            ))}
+            {status.backups.length > 10 && (
+              <p className="text-xs text-[var(--color-wa-text-sec)] px-2 pt-1">y {status.backups.length - 10} más…</p>
+            )}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function ConfigPage() {
   const [active, setActive] = useState<Section>("negocio");
@@ -611,6 +1019,8 @@ export default function ConfigPage() {
       case "promociones": return <SectionPromociones onSaved={showToast} />;
       case "horarios":    return <SectionHorarios onSaved={showToast} />;
       case "cerrados":    return <SectionCerrados onSaved={showToast} />;
+      case "personal":    return <SectionPersonal />;
+      case "backup":      return <SectionBackup />;
     }
   };
 
