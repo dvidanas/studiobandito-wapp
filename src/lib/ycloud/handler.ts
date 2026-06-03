@@ -102,15 +102,16 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
 
   // Disponibilidad de turnos si está habilitado
   const apptConfig = (clientConfig as Record<string, unknown>).appointments as
-    | { enabled: boolean; defaultDuration: number }
+    | { enabled: boolean }
     | undefined;
+  const duration: number = (clientConfig as Record<string, unknown>).appointmentDuration as number ?? 40;
   let availabilityNote = "";
   let offeredSlots: Array<AvailableSlot & { date: string }> = [];
   if (apptConfig?.enabled) {
-    offeredSlots = getNextAvailableSlots(3, apptConfig.defaultDuration ?? 30);
+    offeredSlots = getNextAvailableSlots(7, duration);
     if (offeredSlots.length > 0) {
       const slotList = offeredSlots
-        .slice(0, 6)
+        .slice(0, 8)
         .map((s) => {
           const d = new Date(s.date + "T12:00:00");
           const dayName = d.toLocaleDateString("es-AR", { weekday: "long" });
@@ -119,8 +120,8 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
         })
         .join(", ");
       availabilityNote =
-        ` DISPONIBILIDAD ACTUAL PARA TURNOS: ${slotList}. ` +
-        "Si el usuario quiere un turno, podés ofrecerle estos horarios.";
+        `HORARIOS DISPONIBLES: ${slotList}. ` +
+        "Cuando el cliente quiera reservar, mostrá estos horarios concretos para que elija uno. No inventes otros horarios.";
     }
   }
 
@@ -172,7 +173,7 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
 
   // Intentar detectar si el usuario confirmó un turno
   if (apptConfig?.enabled && offeredSlots.length > 0) {
-    tryBookAppointmentFromChat(convoId, phone, history, offeredSlots, apptConfig.defaultDuration ?? 30).catch(
+    tryBookAppointmentFromChat(convoId, phone, history, offeredSlots, duration).catch(
       (err) => console.error("[appt] error en tryBookAppointmentFromChat:", err)
     );
   }
@@ -201,7 +202,7 @@ Conversación:
 ${conversation}
 
 Si el usuario eligió o confirmó un turno concreto de la lista, respondé ÚNICAMENTE con este JSON (sin markdown):
-{"date":"YYYY-MM-DD","time_start":"HH:MM"}
+{"date":"YYYY-MM-DD","time_start":"HH:MM","service":"nombre del servicio mencionado en la conversación o null"}
 
 Si NO eligió ninguno todavía (solo pregunta, duda, o habla de otra cosa), respondé ÚNICAMENTE con:
 null`;
@@ -217,14 +218,14 @@ null`;
   const clean = raw.trim().replace(/```json|```/g, "").trim();
   if (clean === "null" || !clean.startsWith("{")) return;
 
-  let parsed: { date?: string; time_start?: string };
+  let parsed: { date?: string; time_start?: string; service?: string | null };
   try {
     parsed = JSON.parse(clean);
   } catch {
     return;
   }
 
-  const { date, time_start } = parsed;
+  const { date, time_start, service } = parsed;
   if (!date || !time_start) return;
 
   // Verificar que el slot sigue disponible en DB (no solo en la lista ofrecida)
@@ -249,6 +250,7 @@ null`;
   const id = createAppointment({
     resource_id: validSlot.resource_id,
     conversation_id: convoId,
+    service: service ?? null,
     date,
     time_start,
     duration_minutes: defaultDuration,
