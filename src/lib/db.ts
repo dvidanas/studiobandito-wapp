@@ -927,3 +927,82 @@ export function removeClosedDate(date: string): void {
     .prepare("DELETE FROM blocked_slots WHERE date = ? AND time_start = '00:00' AND time_end = '23:59' AND reason = 'closed'")
     .run(date);
 }
+
+// ── Métricas ─────────────────────────────────────────────────
+
+export interface MetricsResult {
+  contacts: { total: number; thisWeek: number; thisMonth: number };
+  messages: { total: number; ai: number; byUser: number; humanHandled: number; humanInterventions: number };
+  appointments: { total: number; pending: number; confirmed: number; cancelled: number; thisMonth: number; fromBot: number; fromManual: number };
+  conversion: { rate: number; contactsWithAppts: number };
+  topServices: Array<{ service: string; count: number }>;
+  appointmentsByDay: Array<{ date: string; count: number }>;
+  messagesByDay: Array<{ day: string; user: number; ai: number }>;
+}
+
+export function getMetrics(): MetricsResult {
+  const db = getDb();
+
+  const totalContacts = db.prepare<[], { c: number }>("SELECT COUNT(*) as c FROM conversations").get()!.c;
+  const weekContacts = db.prepare<[], { c: number }>("SELECT COUNT(*) as c FROM conversations WHERE created_at >= unixepoch('now', '-7 days')").get()!.c;
+  const monthContacts = db.prepare<[], { c: number }>("SELECT COUNT(*) as c FROM conversations WHERE created_at >= unixepoch('now', '-30 days')").get()!.c;
+
+  const msgRows = db.prepare<[], { role: string; count: number }>("SELECT role, COUNT(*) as count FROM messages GROUP BY role").all();
+  const msgMap: Record<string, number> = Object.fromEntries(msgRows.map(r => [r.role, r.count]));
+  const humanInterventions = db.prepare<[], { c: number }>("SELECT COUNT(*) as c FROM conversations WHERE mode = 'HUMAN'").get()!.c;
+
+  const totalAppts = db.prepare<[], { c: number }>("SELECT COUNT(*) as c FROM appointments").get()!.c;
+  const apptByStatus = db.prepare<[], { status: string; count: number }>("SELECT status, COUNT(*) as count FROM appointments GROUP BY status").all();
+  const apptStatus: Record<string, number> = Object.fromEntries(apptByStatus.map(r => [r.status, r.count]));
+  const monthAppts = db.prepare<[], { c: number }>("SELECT COUNT(*) as c FROM appointments WHERE date >= date('now', 'start of month')").get()!.c;
+  const apptBySource = db.prepare<[], { source: string; count: number }>("SELECT source, COUNT(*) as count FROM appointments GROUP BY source").all();
+  const sourceMap: Record<string, number> = Object.fromEntries(apptBySource.map(r => [r.source, r.count]));
+
+  const contactsWithAppts = db.prepare<[], { c: number }>("SELECT COUNT(DISTINCT conversation_id) as c FROM appointments WHERE conversation_id IS NOT NULL").get()!.c;
+
+  const topServices = db.prepare<[], { service: string; count: number }>(
+    "SELECT service, COUNT(*) as count FROM appointments WHERE service IS NOT NULL AND service != '' GROUP BY service ORDER BY count DESC LIMIT 6"
+  ).all();
+
+  const appointmentsByDay = db.prepare<[], { date: string; count: number }>(
+    "SELECT date, COUNT(*) as count FROM appointments WHERE date >= date('now', '-29 days') GROUP BY date ORDER BY date"
+  ).all();
+
+  const msgsByDayRaw = db.prepare<[], { day: string; role: string; count: number }>(
+    "SELECT date(created_at, 'unixepoch') as day, role, COUNT(*) as count FROM messages WHERE created_at >= unixepoch('now', '-13 days') GROUP BY day, role ORDER BY day"
+  ).all();
+  const msgsByDayMap: Record<string, { user: number; ai: number }> = {};
+  for (const r of msgsByDayRaw) {
+    if (!msgsByDayMap[r.day]) msgsByDayMap[r.day] = { user: 0, ai: 0 };
+    if (r.role === "user") msgsByDayMap[r.day].user = r.count;
+    if (r.role === "assistant") msgsByDayMap[r.day].ai = r.count;
+  }
+  const messagesByDay = Object.entries(msgsByDayMap).map(([day, v]) => ({ day, ...v }));
+
+  return {
+    contacts: { total: totalContacts, thisWeek: weekContacts, thisMonth: monthContacts },
+    messages: {
+      total: (msgMap.user ?? 0) + (msgMap.assistant ?? 0) + (msgMap.human ?? 0),
+      ai: msgMap.assistant ?? 0,
+      byUser: msgMap.user ?? 0,
+      humanHandled: msgMap.human ?? 0,
+      humanInterventions,
+    },
+    appointments: {
+      total: totalAppts,
+      pending: apptStatus.pending ?? 0,
+      confirmed: apptStatus.confirmed ?? 0,
+      cancelled: apptStatus.cancelled ?? 0,
+      thisMonth: monthAppts,
+      fromBot: sourceMap.bot ?? 0,
+      fromManual: sourceMap.manual ?? 0,
+    },
+    conversion: {
+      rate: totalContacts > 0 ? Math.round((contactsWithAppts / totalContacts) * 1000) / 10 : 0,
+      contactsWithAppts,
+    },
+    topServices,
+    appointmentsByDay,
+    messagesByDay,
+  };
+}
