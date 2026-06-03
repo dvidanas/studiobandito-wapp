@@ -127,7 +127,7 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
 
   const firstMsgInstruction = isFirstBotMessage
     ? "Es tu PRIMER mensaje en esta conversación. " +
-      "Saludá, presentá brevemente a Feer en una sola oración (ej: somos una agencia digital que ayuda a negocios a crecer usando tecnología e IA), " +
+      `Saludá, presentá brevemente a ${clientConfig.businessName} en una sola oración (ej: ${clientConfig.businessDescription}), ` +
       "y preguntá qué tipo de servicio está buscando. " +
       "Todo en un único mensaje corto y directo, sin listas ni saltos de línea."
     : undefined;
@@ -290,10 +290,18 @@ async function handleIncomingMessage(
   const waId = msg.id as string;
   const text = (msg.text as Record<string, string>)?.body;
   const rawPhone = msg.from as string;
+  const toPhone = msg.to as string | undefined;
   const senderName = (msg.senderName as string) ?? null;
 
   if (!waId || !text || !rawPhone) {
     console.warn("[wh] mensaje incompleto, ignorando", msg);
+    return;
+  }
+
+  // Filtrar mensajes destinados a otro número (webhooks son cuenta-nivel en YCloud)
+  const ownNumber = process.env.YCLOUD_PHONE_NUMBER?.replace("+", "");
+  if (toPhone && ownNumber && !toPhone.replace("+", "").endsWith(ownNumber.replace("+", ""))) {
+    console.log(`[wh] mensaje para ${toPhone}, ignorando (este bot es ${ownNumber})`);
     return;
   }
 
