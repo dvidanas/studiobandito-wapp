@@ -265,7 +265,7 @@ function DayAppointmentCard({
     <div
       className={`relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 rounded-2xl border bg-[var(--color-wa-panel-l)] animate-in shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-200 overflow-hidden ${
         a.status === "cancelled" 
-          ? "opacity-60 bg-slate-50/50 dark:bg-black/25 border-[var(--color-wa-sep)] dark:border-red-500/25" 
+          ? "opacity-70 bg-[#F4F4F6] dark:bg-black/25 border-[var(--color-wa-sep)] dark:border-red-500/25" 
           : a.status === "confirmed"
             ? "border-[var(--color-wa-sep)] dark:border-teal-500/25"
             : "border-[var(--color-wa-sep)] dark:border-amber-500/25"
