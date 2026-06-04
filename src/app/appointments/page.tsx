@@ -250,7 +250,7 @@ function DayAppointmentCard({
   onEdit: (appointment: Appointment) => void;
 }) {
   const name = a.contact_name ?? a.contact_phone ?? "Sin nombre";
-  const accentColor = a.status === "pending" ? "#F59E0B" : a.status === "confirmed" ? "#2DD4BF" : "var(--color-wa-sep)";
+  const accentColor = a.status === "pending" ? "#F59E0B" : a.status === "confirmed" ? "#2DD4BF" : "#EF4444";
 
   // Compute initials for the avatar
   const initials = name
@@ -263,8 +263,12 @@ function DayAppointmentCard({
 
   return (
     <div
-      className={`relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 rounded-2xl border border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] animate-in shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-200 overflow-hidden ${
-        a.status === "cancelled" ? "opacity-60 bg-slate-50/50" : ""
+      className={`relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 rounded-2xl border bg-[var(--color-wa-panel-l)] animate-in shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-200 overflow-hidden ${
+        a.status === "cancelled" 
+          ? "opacity-60 bg-slate-50/50 dark:bg-black/25 border-[var(--color-wa-sep)] dark:border-red-500/25" 
+          : a.status === "confirmed"
+            ? "border-[var(--color-wa-sep)] dark:border-teal-500/25"
+            : "border-[var(--color-wa-sep)] dark:border-amber-500/25"
       }`}
     >
       {/* Left indicator bar */}
