@@ -30,27 +30,27 @@
 }
 
 :root {
-  --bg-main: #F7F6F3;
+  --bg-main: #EFEFEF;
   --bg-panel-l: #FFFFFF;
   --bg-panel-r: #FFFFFF;
-  --bg-bubble-in: #EFECE5;
-  --bg-bubble-out: #FAF3E6;
-  --bg-input: #F3F1EB;
+  --bg-bubble-in: #E8E8E8;
+  --bg-bubble-out: #F5F5F5;
+  --bg-input: #F0F0F0;
   --bg-header: #FFFFFF;
-  --text-main: #1C1C1A;
-  --text-sec: #7C7871;
-  --wa-green: #A88544;
-  --wa-green-d: #937237;
+  --text-main: #111111;
+  --text-sec: #888888;
+  --wa-green: #1A1A1A;
+  --wa-green-d: #000000;
   --wa-green-text: #FFFFFF;
-  --color-sep: #E5E2DA;
-  --bg-hover: #F2EFE6;
-  --shadow-card: 0 2px 8px -1px rgba(28,28,26,0.04), 0 4px 16px -2px rgba(28,28,26,0.02);
-  --shadow-card-hover: 0 10px 25px -5px rgba(28,28,26,0.08), 0 8px 16px -6px rgba(28,28,26,0.04);
-  
-  --bubble-out-text: #1C1C1A;
-  --bubble-in-text: #1C1C1A;
-  --time-out: #7C7871;
-  --time-in: #7C7871;
+  --color-sep: #DEDEDE;
+  --bg-hover: #E8E8E8;
+  --shadow-card: 0 2px 8px -1px rgba(0,0,0,0.08), 0 4px 16px -2px rgba(0,0,0,0.05);
+  --shadow-card-hover: 0 10px 28px -4px rgba(0,0,0,0.14), 0 6px 14px -4px rgba(0,0,0,0.08);
+
+  --bubble-out-text: #111111;
+  --bubble-in-text: #111111;
+  --time-out: #888888;
+  --time-in: #888888;
 }
 
 .dark {
