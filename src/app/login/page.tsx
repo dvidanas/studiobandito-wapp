@@ -123,7 +123,7 @@ function LoginForm() {
                 border: `1.5px solid ${error ? "#ef4444" : isActive ? "var(--wa-green)" : "var(--color-sep)"}`,
                 background: error ? "#ef4444" : isActive ? "var(--wa-green)" : "transparent",
                 transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                boxShadow: isActive && !error ? "0 4px 12px rgba(168,133,68,0.15)" : "none",
+                boxShadow: isActive && !error ? "0 4px 12px rgba(0,0,0,0.12)" : "none",
               }}
             />
           );

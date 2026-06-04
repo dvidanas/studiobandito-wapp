@@ -236,7 +236,7 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
                   <span className="absolute inset-0 rounded-full bg-[var(--color-wa-green)]/5 animate-ping opacity-60" style={{ animationDuration: '4s' }} />
                   
                   {/* Stylized Barbershop Logo SVG (Scissors crossing) */}
-                  <svg className="w-16 h-16 md:w-20 md:h-20 text-[var(--color-wa-green)] filter drop-shadow-[0_4px_6px_rgba(168,133,68,0.15)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.25}>
+                  <svg className="w-16 h-16 md:w-20 md:h-20 text-[var(--color-wa-green)] filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.12)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.25}>
                     <circle cx="7" cy="8" r="2.5" />
                     <circle cx="7" cy="16" r="2.5" />
                     <path strokeLinecap="round" d="M9.5 9.5L20 18M9.5 14.5L20 6" />
