@@ -30,14 +30,14 @@ export function MessageBubble({ message }: Props) {
       <div
         className={`relative max-w-[85%] sm:max-w-[70%] px-3.5 pt-2 pb-2.5 text-[14.5px] leading-[20px] shadow-sm transition-all ${
           isIncoming
-            ? "bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-text-main)] rounded-2xl rounded-tl-sm border border-[var(--color-wa-sep)]/30"
-            : "bg-[var(--color-wa-bubble-out)] text-[var(--color-wa-green-text)] rounded-2xl rounded-tr-sm border border-[var(--color-wa-sep)]/10"
+            ? "bg-[var(--color-wa-bubble-in)] text-[var(--color-wa-bubble-in-text)] rounded-2xl rounded-tl-sm border border-[var(--color-wa-sep)]/30"
+            : "bg-[var(--color-wa-bubble-out)] text-[var(--color-wa-bubble-out-text)] rounded-2xl rounded-tr-sm border border-[var(--color-wa-sep)]/10"
         }`}
       >
         {(isAssistant || isHuman) && (
           <span
             className={`block text-[11px] font-semibold mb-0.5 opacity-80 ${
-              isIncoming ? "text-[var(--color-wa-text-sec)]" : "text-[var(--color-wa-green-text)]/80"
+              isIncoming ? "text-[var(--color-wa-text-sec)]" : "text-[var(--color-wa-time-out)]"
             }`}
           >
             {isAssistant ? "IA" : "Agente"}
@@ -54,20 +54,18 @@ export function MessageBubble({ message }: Props) {
             className="absolute bottom-0 right-0 flex items-center gap-1"
           >
             <span className={`text-[10px] leading-none ${
-              isIncoming ? "text-[var(--color-wa-text-sec)]" : "text-[var(--color-wa-green-text)]/70"
+              isIncoming ? "text-[var(--color-wa-time-in)]" : "text-[var(--color-wa-time-out)]"
             }`}>
               {formatTime(message.created_at)}
             </span>
             {!isIncoming && (
-              <span className={`flex items-center ${
-                isIncoming ? "text-[var(--color-wa-text-sec)]" : "text-[var(--color-wa-green-text)]/70"
-              }`}>
+              <span className="flex items-center">
                 {failedToSend ? (
-                  <svg className="w-3.5 h-3.5 -mt-[1px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-3.5 h-3.5 -mt-[1px] text-[var(--color-wa-time-out)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 ) : (
-                  <svg className="w-3.5 h-3.5 -mt-[1px]" viewBox="0 0 24 24" fill="currentColor">
+                  <svg className="w-3.5 h-3.5 -mt-[1px] text-[#53bdeb]" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
                   </svg>
                 )}

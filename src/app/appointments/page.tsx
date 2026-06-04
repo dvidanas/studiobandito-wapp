@@ -263,8 +263,10 @@ function DayAppointmentCard({
 
   return (
     <div
-      className={`relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 rounded-2xl border border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)] animate-in shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-200 overflow-hidden ${
-        a.status === "cancelled" ? "opacity-60 bg-slate-50/50" : ""
+      className={`relative flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 rounded-2xl border bg-[var(--color-wa-panel-l)] animate-in shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-200 overflow-hidden ${
+        a.status === "cancelled" 
+          ? "opacity-50 bg-slate-50/50 dark:bg-black/25 border-red-500/20 dark:border-red-500/30" 
+          : "border-[var(--color-wa-sep)]"
       }`}
     >
       {/* Left indicator bar */}
