@@ -30,51 +30,51 @@
 }
 
 :root {
-  --bg-main: #F0F2F5;
+  --bg-main: #F7F6F3;
   --bg-panel-l: #FFFFFF;
-  --bg-panel-r: #EFEAE2;
-  --bg-bubble-in: #FFFFFF;
-  --bg-bubble-out: #D9FDD3;
-  --bg-input: #FFFFFF;
-  --bg-header: #F0F2F5;
-  --text-main: #111B21;
-  --text-sec: #667781;
-  --wa-green: #008069;
-  --wa-green-d: #015c4b;
+  --bg-panel-r: #FFFFFF;
+  --bg-bubble-in: #EFECE5;
+  --bg-bubble-out: #FAF3E6;
+  --bg-input: #F3F1EB;
+  --bg-header: #FFFFFF;
+  --text-main: #1C1C1A;
+  --text-sec: #7C7871;
+  --wa-green: #A88544;
+  --wa-green-d: #937237;
   --wa-green-text: #FFFFFF;
-  --color-sep: #E9EDEF;
-  --bg-hover: #F5F6F6;
-  --shadow-card: 0 1px 3px 0 rgba(11,20,26,0.05), 0 1px 2px -1px rgba(11,20,26,0.03);
-  --shadow-card-hover: 0 4px 6px -1px rgba(11,20,26,0.08), 0 2px 4px -2px rgba(11,20,26,0.04);
+  --color-sep: #E5E2DA;
+  --bg-hover: #F2EFE6;
+  --shadow-card: 0 2px 8px -1px rgba(28,28,26,0.04), 0 4px 16px -2px rgba(28,28,26,0.02);
+  --shadow-card-hover: 0 10px 25px -5px rgba(28,28,26,0.08), 0 8px 16px -6px rgba(28,28,26,0.04);
   
-  --bubble-out-text: #111B21;
-  --bubble-in-text: #111B21;
-  --time-out: rgba(17,27,33,0.60);
-  --time-in: rgba(17,27,33,0.60);
+  --bubble-out-text: #1C1C1A;
+  --bubble-in-text: #1C1C1A;
+  --time-out: #7C7871;
+  --time-in: #7C7871;
 }
 
 .dark {
-  --bg-main: #0B141A;
-  --bg-panel-l: #111B21;
-  --bg-panel-r: #0B141A;
-  --bg-bubble-in: #202C33;
-  --bg-bubble-out: #005C4B;
-  --bg-input: #2A3942;
-  --bg-header: #202C33;
-  --text-main: #E9EDEF;
-  --text-sec: #8696A0;
-  --wa-green: #00A884;
-  --wa-green-d: #008069;
-  --wa-green-text: #111B21;
-  --color-sep: #222D34;
-  --bg-hover: #202C33;
+  --bg-main: #0A0B0D;
+  --bg-panel-l: #121316;
+  --bg-panel-r: #121316;
+  --bg-bubble-in: #1A1C22;
+  --bg-bubble-out: #2E281C;
+  --bg-input: #1A1C22;
+  --bg-header: #121316;
+  --text-main: #F3F3F5;
+  --text-sec: #8D9099;
+  --wa-green: #D4B26F;
+  --wa-green-d: #BD9C59;
+  --wa-green-text: #090A0C;
+  --color-sep: #1C1E24;
+  --bg-hover: #1A1C23;
   --shadow-card: 0 4px 12px -2px rgba(0,0,0,0.3), 0 2px 6px -1px rgba(0,0,0,0.2);
   --shadow-card-hover: 0 12px 24px -4px rgba(0,0,0,0.4), 0 4px 12px -2px rgba(0,0,0,0.3);
   
-  --bubble-out-text: #E9EDEF;
-  --bubble-in-text: #E9EDEF;
-  --time-out: rgba(233,237,239,0.60);
-  --time-in: rgba(233,237,239,0.60);
+  --bubble-out-text: #F3F3F5;
+  --bubble-in-text: #F3F3F5;
+  --time-out: #8D9099;
+  --time-in: #8D9099;
 }
 
 body {
