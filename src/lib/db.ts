@@ -214,6 +214,8 @@ export interface Conversation {
   has_lead: number;
   last_message_at: number | null;
   created_at: number;
+  last_message_content?: string | null;
+  last_message_role?: "user" | "assistant" | "human" | null;
 }
 
 export interface Message {
@@ -272,7 +274,18 @@ export function getConversationById(id: number): Conversation | null {
 export function listConversations(): Conversation[] {
   return getDb()
     .prepare<[], Conversation>(
-      "SELECT * FROM conversations ORDER BY COALESCE(last_message_at, created_at) DESC"
+      `SELECT 
+         c.*,
+         m.content AS last_message_content,
+         m.role AS last_message_role
+       FROM conversations c
+       LEFT JOIN messages m ON m.id = (
+         SELECT id FROM messages 
+         WHERE conversation_id = c.id 
+         ORDER BY created_at DESC, id DESC 
+         LIMIT 1
+       )
+       ORDER BY COALESCE(c.last_message_at, c.created_at) DESC`
     )
     .all();
 }
@@ -406,9 +419,19 @@ export function updateLead(
   if (entries.length === 0) return;
   const sets = entries.map(([k]) => `${k} = ?`).join(", ");
   const values = entries.map(([, v]) => v);
-  getDb()
-    .prepare(`UPDATE leads SET ${sets}, updated_at = unixepoch() WHERE id = ?`)
-    .run(...values, id);
+  const db = getDb();
+  const update = db.transaction(() => {
+    db.prepare(`UPDATE leads SET ${sets}, updated_at = unixepoch() WHERE id = ?`).run(...values, id);
+    if (fields.name) {
+      const lead = db.prepare<number, Lead>("SELECT conversation_id FROM leads WHERE id = ?").get(id);
+      if (lead) {
+        db.prepare(
+          "UPDATE appointments SET contact_name = ? WHERE conversation_id = ? AND status = 'pending'"
+        ).run(fields.name, lead.conversation_id);
+      }
+    }
+  });
+  update();
 }
 
 export function deleteLead(id: number): void {
@@ -608,7 +631,20 @@ export function getNextAvailableSlots(days: number, durationMinutes = 30): Array
   for (let i = 0; i < days; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().slice(0, 10);
+    
+    // Obtener la fecha en la zona horaria de Argentina (America/Argentina/Buenos_Aires) en formato YYYY-MM-DD
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const parts = formatter.formatToParts(d);
+    const year = parts.find((p) => p.type === "year")!.value;
+    const month = parts.find((p) => p.type === "month")!.value;
+    const day = parts.find((p) => p.type === "day")!.value;
+    const dateStr = `${year}-${month}-${day}`;
+
     const slots = getAvailableSlots(dateStr, durationMinutes);
     result.push(...slots.slice(0, 4).map((s) => ({ ...s, date: dateStr })));
   }

@@ -24,6 +24,8 @@ interface Conversation {
   has_lead: number;
   last_message_at: number | null;
   created_at: number;
+  last_message_content?: string | null;
+  last_message_role?: "user" | "assistant" | "human" | null;
 }
 
 function Dashboard({ connectionStatus }: { connectionStatus: { status: string; phone?: string; quality?: string; message?: string } }) {

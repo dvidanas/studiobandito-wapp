@@ -49,7 +49,7 @@ export const clientConfig = {
     },
   ],
 
-  botName: "Amalia",
+  botName: "Soledad",
   botBooking: true,
   appointmentDuration: 40,
   loginPin: "0305",

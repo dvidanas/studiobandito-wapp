@@ -42,6 +42,7 @@ const NOT_A_NAME = [
 
 const NAME_ASK_KEYWORDS = [
   "nombre", "llamás", "llamas", "identificarte", "cómo te", "como te",
+  "gusto", "quién", "quien", "quién sos", "quien sos", "tu nombre"
 ];
 
 // Timers de debounce por conversation_id
@@ -108,10 +109,10 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
   let availabilityNote = "";
   let offeredSlots: Array<AvailableSlot & { date: string }> = [];
   if (apptConfig?.enabled) {
-    offeredSlots = getNextAvailableSlots(7, duration);
+    offeredSlots = getNextAvailableSlots(14, duration);
     if (offeredSlots.length > 0) {
       const slotList = offeredSlots
-        .slice(0, 8)
+        .slice(0, 60)
         .map((s) => {
           const d = new Date(s.date + "T12:00:00");
           const dayName = d.toLocaleDateString("es-AR", { weekday: "long" });
@@ -121,7 +122,8 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
         .join(", ");
       availabilityNote =
         `HORARIOS DISPONIBLES: ${slotList}. ` +
-        "Cuando el cliente quiera reservar, mostrá estos horarios concretos para que elija uno. No inventes otros horarios.";
+        "Cuando el cliente quiera reservar, mostrá estos horarios concretos para que elija uno. No inventes otros horarios. " +
+        "IMPORTANTE: Revisa la lista de HORARIOS DISPONIBLES minuciosamente por lo menos dos veces antes de contestar si hay o no turnos para un día específico (como el jueves u otra fecha). Si el día solicitado figura en la lista con horarios libres, ofrecelos. Si no figura en la lista de arriba, indica amablemente que para ese día no hay disponibilidad.";
     }
   }
 

@@ -8,6 +8,8 @@ interface Conversation {
   has_lead: number;
   last_message_at: number | null;
   created_at: number;
+  last_message_content?: string | null;
+  last_message_role?: "user" | "assistant" | "human" | null;
 }
 
 interface Props {
@@ -66,13 +68,18 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
                 >
                   {c.mode === "AI" ? "IA" : "HUMANO"}
                 </span>
+                {c.mode === "HUMAN" && c.last_message_role === "user" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-500 text-white border border-rose-600 animate-pulse">
+                    ESPERA HUMANA
+                  </span>
+                )}
                 {c.has_lead === 1 && (
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                     LEAD
                   </span>
                 )}
-                <span className="text-xs text-[var(--color-wa-text-sec)] truncate">
-                  último mensaje...
+                <span className="text-xs text-[var(--color-wa-text-sec)] truncate max-w-[180px]">
+                  {c.last_message_content || "Sin mensajes"}
                 </span>
               </div>
             </div>

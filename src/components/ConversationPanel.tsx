@@ -11,6 +11,8 @@ interface Conversation {
   mode: "AI" | "HUMAN";
   last_message_at: number | null;
   created_at: number;
+  last_message_content?: string | null;
+  last_message_role?: "user" | "assistant" | "human" | null;
 }
 
 interface Message {
