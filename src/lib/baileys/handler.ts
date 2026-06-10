@@ -91,7 +91,7 @@ function extractText(msg: WAMessage): string | null {
 }
 
 function extractPhone(jid: string): string {
-  return jid.split("@")[0];
+  return jid.split("@")[0].split(":")[0];
 }
 
 async function sendDebouncedReply(convoId: number, phone: string, sendJid: string): Promise<void> {
@@ -298,7 +298,7 @@ export async function handleBaileysMessage(msg: WAMessage): Promise<void> {
 
   markMessageRead(jid, waId).catch(() => {});
 
-  const convo = getOrCreateConversation(phone, senderName);
+  const convo = getOrCreateConversation(phone, senderName, jid);
   insertMessage(convo.id, "user", text, waId);
 
   const history = getRecentHistory(convo.id, 20);

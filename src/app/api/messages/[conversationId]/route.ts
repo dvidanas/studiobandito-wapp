@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const messageId = insertMessage(convo.id, "human", content, null);
 
   try {
-    const { wa_message_id } = await sendTextMessage(convo.phone, content);
+    const { wa_message_id } = await sendTextMessage(convo.jid ?? convo.phone, content);
     updateMessageWaId(messageId, wa_message_id);
     return NextResponse.json({ ok: true, messageId });
   } catch (err: unknown) {

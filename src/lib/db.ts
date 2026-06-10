@@ -191,6 +191,10 @@ function migrate(db: Database.Database) {
     db.exec("ALTER TABLE resources ADD COLUMN phone TEXT");
   } catch { /* ya existe */ }
 
+  try {
+    db.exec("ALTER TABLE conversations ADD COLUMN jid TEXT");
+  } catch { /* ya existe */ }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS promotions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,6 +213,7 @@ function migrate(db: Database.Database) {
 export interface Conversation {
   id: number;
   phone: string;
+  jid: string | null;
   name: string | null;
   mode: "AI" | "HUMAN";
   has_lead: number;
@@ -250,14 +255,16 @@ export interface LeadWithConversation extends Lead {
 
 export function getOrCreateConversation(
   phone: string,
-  name?: string | null
+  name?: string | null,
+  jid?: string | null
 ): Conversation {
   const db = getDb();
   db.prepare(
-    `INSERT INTO conversations (phone, name) VALUES (?, ?)
+    `INSERT INTO conversations (phone, name, jid) VALUES (?, ?, ?)
      ON CONFLICT(phone) DO UPDATE SET
-       name = COALESCE(excluded.name, conversations.name)`
-  ).run(phone, name ?? null);
+       name = COALESCE(excluded.name, conversations.name),
+       jid  = COALESCE(excluded.jid,  conversations.jid)`
+  ).run(phone, name ?? null, jid ?? null);
   return db
     .prepare<string, Conversation>("SELECT * FROM conversations WHERE phone = ?")
     .get(phone)!;
