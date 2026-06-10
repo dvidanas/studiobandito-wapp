@@ -1,40 +1,45 @@
 import { NextResponse } from "next/server";
-import { getPhoneNumberInfo } from "@/lib/ycloud/client";
+import { getBaileysStatus } from "@/lib/baileys/client";
+import QRCode from "qrcode";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  console.log("[status] verificando conexión...");
-
-  const required = ["YCLOUD_API_KEY", "YCLOUD_PHONE_NUMBER", "GEMINI_API_KEY"];
+  const required = ["GEMINI_API_KEY"];
   const missing = required.filter((k) => !process.env[k]);
 
   if (missing.length > 0) {
-    console.log("[status] faltan variables de entorno:", missing);
     return NextResponse.json(
       { status: "missing_config", missing },
       { headers: { "Cache-Control": "no-store" } }
     );
   }
 
-  try {
-    const info = await getPhoneNumberInfo();
-    console.log("[status] conectado →", info.display_phone_number, "quality:", info.status);
+  const { status, qr, phone } = getBaileysStatus();
+
+  if (status === "open") {
+    console.log(`[status] conectado → +${phone}`);
     return NextResponse.json(
-      {
-        status: "connected",
-        phone: info.display_phone_number,
-        quality: info.status,
-      },
-      { headers: { "Cache-Control": "no-store" } }
-    );
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[status] error al verificar conexión con YCloud:");
-    console.error("[status]", message);
-    return NextResponse.json(
-      { status: "error", message },
+      { status: "connected", phone },
       { headers: { "Cache-Control": "no-store" } }
     );
   }
+
+  if (status === "qr_pending") {
+    let qrDataUrl: string | null = null;
+    if (qr) {
+      try {
+        qrDataUrl = await QRCode.toDataURL(qr, { width: 300, margin: 2 });
+      } catch {}
+    }
+    return NextResponse.json(
+      { status: "qr_pending", qr: qrDataUrl ?? qr },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  return NextResponse.json(
+    { status },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

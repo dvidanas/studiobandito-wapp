@@ -5,13 +5,11 @@ interface Props {
 }
 
 const ENV_DESCRIPTIONS: Record<string, string> = {
-  YCLOUD_API_KEY: "API Key de YCloud",
-  YCLOUD_PHONE_NUMBER: "Número de WhatsApp en formato E.164 (ej: +5491155555555)",
   GEMINI_API_KEY: "API Key de Google Gemini (AI Studio)",
 };
 
 export function ConfigScreen({ missing }: Props) {
-  const allRequired = ["YCLOUD_API_KEY", "YCLOUD_PHONE_NUMBER", "GEMINI_API_KEY"];
+  const allRequired = ["GEMINI_API_KEY"];
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-start justify-center py-16 px-4">
@@ -81,21 +79,6 @@ export function ConfigScreen({ missing }: Props) {
               </ul>
             </div>
 
-            {/* URL Webhook */}
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                URL del Webhook
-              </h3>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <code className="text-sm text-gray-700 flex-1 break-all">
-                  https://TU_DOMINIO/api/webhook
-                </code>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Reemplazá TU_DOMINIO por el dominio asignado en EasyPanel.
-              </p>
-            </div>
-
             {/* Pasos */}
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
@@ -103,14 +86,9 @@ export function ConfigScreen({ missing }: Props) {
               </h3>
               <ol className="space-y-2 text-sm text-gray-600">
                 {[
-                  "Crear cuenta en ycloud.com",
-                  "Registrar número de WhatsApp Business.",
-                  "Settings → API Keys → copiar YCLOUD_API_KEY.",
-                  "Copiar número como YCLOUD_PHONE_NUMBER (E.164 con +).",
-                  "YCloud → Webhooks → pegar la URL del webhook de arriba.",
-                  "Suscribir al evento whatsapp.inbound_message.received.",
                   "Obtener GEMINI_API_KEY desde aistudio.google.com",
-                  "Configurar las variables en EasyPanel → Environment → reiniciar.",
+                  "Configurar la variable en EasyPanel → Environment → reiniciar.",
+                  "Abrir el dashboard y escanear el código QR con WhatsApp.",
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-xs flex items-center justify-center font-medium">

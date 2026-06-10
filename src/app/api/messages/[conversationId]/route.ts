@@ -5,7 +5,7 @@ import {
   insertMessage,
   updateMessageWaId,
 } from "@/lib/db";
-import { sendTextMessage } from "@/lib/ycloud/client";
+import { sendTextMessage } from "@/lib/baileys/client";
 
 export const dynamic = "force-dynamic";
 

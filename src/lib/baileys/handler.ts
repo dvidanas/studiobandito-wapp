@@ -1,3 +1,4 @@
+import type { WAMessage } from "@whiskeysockets/baileys";
 import {
   wasMessageProcessed,
   markMessageProcessed,
@@ -45,7 +46,6 @@ const NAME_ASK_KEYWORDS = [
   "gusto", "quién", "quien", "quién sos", "quien sos", "tu nombre"
 ];
 
-// Timers de debounce por conversation_id
 const pendingResponses = new Map<number, ReturnType<typeof setTimeout>>();
 
 function hasLeadIntent(text: string): boolean {
@@ -53,7 +53,6 @@ function hasLeadIntent(text: string): boolean {
   return INTENT_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-// Mensaje con contenido real: no es un saludo/aceptación de una sola palabra
 function isEngagedMessage(text: string): boolean {
   const t = text.trim().toLowerCase();
   if (NOT_A_NAME.includes(t)) return false;
@@ -70,7 +69,6 @@ function looksLikeName(text: string, lastBotMessage: string | null): boolean {
   if (!lastBotMessage) return false;
   const lastLower = lastBotMessage.toLowerCase();
   if (!NAME_ASK_KEYWORDS.some((kw) => lastLower.includes(kw))) return false;
-
   const t = text.trim();
   if (t.length < 2 || t.length > 40) return false;
   if (/[0-9]/.test(t)) return false;
@@ -80,28 +78,37 @@ function looksLikeName(text: string, lastBotMessage: string | null): boolean {
   return true;
 }
 
+function extractText(msg: WAMessage): string | null {
+  const m = msg.message;
+  if (!m) return null;
+  return (
+    m.conversation ??
+    m.extendedTextMessage?.text ??
+    m.imageMessage?.caption ??
+    m.videoMessage?.caption ??
+    null
+  );
+}
+
+function extractPhone(jid: string): string {
+  return jid.split("@")[0];
+}
+
 async function sendDebouncedReply(convoId: number, phone: string): Promise<void> {
   pendingResponses.delete(convoId);
 
-  // Re-leer modo por si cambió mientras esperábamos
   const fresh = getConversationById(convoId);
   if (!fresh || fresh.mode !== "AI") {
     console.log(`[wh] modo ${fresh?.mode ?? "?"} — sin respuesta automática`);
     return;
   }
 
-  // Re-leer historial completo (pueden haber llegado mensajes nuevos)
   const history = getRecentHistory(convoId, 20);
   const chatHistory: ChatMessage[] = history.map((m) => ({
     role: m.role === "user" ? "user" : "assistant",
     content: m.content,
   }));
 
-  const engagedCount = history.filter(
-    (m) => m.role === "user" && isEngagedMessage(m.content)
-  ).length;
-
-  // Disponibilidad de turnos si está habilitado
   const apptConfig = (clientConfig as Record<string, unknown>).appointments as
     | { enabled: boolean }
     | undefined;
@@ -146,7 +153,6 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
 
   const rawTrimmed = rawReply.trim();
 
-  // Derivar a humano si Gemini no sabe responder
   if (rawTrimmed.includes("[[DERIVAR_HUMANO]]")) {
     console.log(`[wh] derivando a humano para +${phone}`);
     setMode(convoId, "HUMAN");
@@ -162,7 +168,6 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
   }
 
   const reply = rawTrimmed.replace(/\n+/g, " ");
-
   const messageId = insertMessage(convoId, "assistant", reply, null);
 
   try {
@@ -173,7 +178,6 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     console.error(`[wh] error al enviar a +${phone}:`, err);
   }
 
-  // Intentar detectar si el usuario confirmó un turno
   if (apptConfig?.enabled && offeredSlots.length > 0) {
     tryBookAppointmentFromChat(convoId, phone, history, offeredSlots, duration).catch(
       (err) => console.error("[appt] error en tryBookAppointmentFromChat:", err)
@@ -230,7 +234,6 @@ null`;
   const { date, time_start, service } = parsed;
   if (!date || !time_start) return;
 
-  // Verificar que el slot sigue disponible en DB (no solo en la lista ofrecida)
   const stillAvailable = getAvailableSlots(date, defaultDuration).some(
     (s) => s.time_start === time_start
   );
@@ -239,7 +242,6 @@ null`;
     return;
   }
 
-  // Evitar duplicado para esta conversación
   if (hasAppointmentForSlot(convoId, date, time_start)) {
     console.log(`[appt] ya existe turno para conversación ${convoId} en ${date} ${time_start}`);
     return;
@@ -264,80 +266,37 @@ null`;
   console.log(`[appt] turno PENDIENTE creado id=${id} para +${phone} → ${date} ${time_start}`);
 }
 
-export async function processWebhookPayload(payload: unknown): Promise<void> {
-  const p = payload as Record<string, unknown>;
-  const type = p?.type;
+export async function handleBaileysMessage(msg: WAMessage): Promise<void> {
+  const jid = msg.key.remoteJid;
+  if (!jid || jid.endsWith("@g.us")) return;
 
-  if (type === "whatsapp.message.updated") {
-    console.log("[webhook] status update, ignorando");
+  const waId = msg.key.id!;
+  const text = extractText(msg);
+  const phone = extractPhone(jid);
+  const senderName = (msg as { pushName?: string }).pushName ?? null;
+
+  if (!text?.trim()) {
+    console.log(`[wh] mensaje sin texto de +${phone}, ignorando`);
     return;
   }
 
-  if (type === "whatsapp.inbound_message.received") {
-    const msg = p?.whatsappInboundMessage as Record<string, unknown> | undefined;
-    if (msg) await handleIncomingMessage(msg);
-    return;
-  }
-
-  console.log(`[webhook] evento no manejado: ${type}`);
-}
-
-async function handleIncomingMessage(
-  msg: Record<string, unknown>
-): Promise<void> {
-  // 1. Solo mensajes de texto
-  if (msg.type !== "text") {
-    console.log(`[wh] tipo no soportado: ${msg.type}, ignorando`);
-    return;
-  }
-
-  const waId = msg.id as string;
-  const text = (msg.text as Record<string, string>)?.body;
-  const rawPhone = msg.from as string;
-  const toPhone = msg.to as string | undefined;
-  const senderName = (msg.senderName as string) ?? null;
-
-  if (!waId || !text || !rawPhone) {
-    console.warn("[wh] mensaje incompleto, ignorando", msg);
-    return;
-  }
-
-  // Filtrar mensajes destinados a otro número (webhooks son cuenta-nivel en YCloud)
-  const ownNumber = process.env.YCLOUD_PHONE_NUMBER?.replace("+", "");
-  if (toPhone && ownNumber && !toPhone.replace("+", "").endsWith(ownNumber.replace("+", ""))) {
-    console.log(`[wh] mensaje para ${toPhone}, ignorando (este bot es ${ownNumber})`);
-    return;
-  }
-
-  // 2. Deduplicación
   if (wasMessageProcessed(waId)) {
     console.log(`[wh] duplicado ${waId}, ignorando`);
     return;
   }
-
-  // 3. Marcar procesado ANTES de continuar
   markMessageProcessed(waId);
-
-  // 4. Normalizar teléfono (sin '+')
-  const phone = rawPhone.startsWith("+") ? rawPhone.slice(1) : rawPhone;
 
   console.log(`[wh] ← de +${phone}: "${text.slice(0, 60)}"`);
 
-  // Marcar como leído inmediatamente (ticks azules → sensación de presencia humana)
-  markMessageRead(waId).catch(() => {});
+  markMessageRead(phone, waId).catch(() => {});
 
-  // 5. Conversación
   const convo = getOrCreateConversation(phone, senderName);
-
-  // 6. Guardar mensaje del usuario
   insertMessage(convo.id, "user", text, waId);
 
-  // 7. Obtener historial (incluye el mensaje recién insertado)
   const history = getRecentHistory(convo.id, 20);
   const lastBotMessage =
     [...history].reverse().find((m) => m.role === "assistant")?.content ?? null;
 
-  // 8. Captura de lead por intención real
   if (!convo.has_lead && hasLeadIntent(text)) {
     const existingLead = getLeadByConversationId(convo.id);
     if (!existingLead) {
@@ -347,7 +306,6 @@ async function handleIncomingMessage(
     }
   }
 
-  // 9. Si ya hay lead y el mensaje parece un nombre, actualizar
   if (convo.has_lead && looksLikeName(text, lastBotMessage)) {
     const lead = getLeadByConversationId(convo.id);
     if (lead && !isRealName(lead.name)) {
@@ -356,21 +314,18 @@ async function handleIncomingMessage(
     }
   }
 
-  // 10. Verificar modo AI antes de programar respuesta
   const fresh = getConversationById(convo.id);
   if (!fresh || fresh.mode !== "AI") {
     console.log(`[wh] modo ${fresh?.mode ?? "?"} — sin respuesta automática`);
     return;
   }
 
-  // 11. Debounce: cancelar timer anterior y programar uno nuevo
   const existing = pendingResponses.get(convo.id);
   if (existing) {
     clearTimeout(existing);
     console.log(`[wh] timer reiniciado para +${phone}`);
   }
 
-  // Primera respuesta del bot: delay corto para no parecer ignorado
   const hasPriorBotMessage = history.some((m) => m.role === "assistant");
   const delay = hasPriorBotMessage ? DELAY : Math.min(DELAY, 2000);
 
@@ -385,3 +340,6 @@ async function handleIncomingMessage(
 
   console.log(`[wh] respuesta programada en ${delay}ms para +${phone}`);
 }
+
+// Suprimir warning de variable no usada — se mantiene para compatibilidad con métricas
+void isEngagedMessage;
