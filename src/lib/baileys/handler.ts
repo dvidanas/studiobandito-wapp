@@ -94,7 +94,7 @@ function extractPhone(jid: string): string {
   return jid.split("@")[0];
 }
 
-async function sendDebouncedReply(convoId: number, phone: string): Promise<void> {
+async function sendDebouncedReply(convoId: number, phone: string, sendJid: string): Promise<void> {
   pendingResponses.delete(convoId);
 
   const fresh = getConversationById(convoId);
@@ -159,7 +159,7 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     const fallback = "Disculpá, para esa consulta te paso con alguien del equipo. En un momento te atienden 🙏";
     const messageId = insertMessage(convoId, "assistant", fallback, null);
     try {
-      const { wa_message_id } = await sendTextMessage(phone, fallback);
+      const { wa_message_id } = await sendTextMessage(sendJid, fallback);
       updateMessageWaId(messageId, wa_message_id);
     } catch (err) {
       console.error(`[wh] error al enviar fallback a +${phone}:`, err);
@@ -178,9 +178,9 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     const part = parts[i];
     const messageId = insertMessage(convoId, "assistant", part, null);
     try {
-      const { wa_message_id } = await sendTextMessage(phone, part);
+      const { wa_message_id } = await sendTextMessage(sendJid, part);
       updateMessageWaId(messageId, wa_message_id);
-      console.log(`[wh] → parte ${i + 1}/${parts.length} enviada a +${phone}`);
+      console.log(`[wh] → parte ${i + 1}/${parts.length} enviada a +${phone} (jid: ${sendJid})`);
     } catch (err) {
       console.error(`[wh] error al enviar parte ${i + 1} a +${phone}:`, err);
     }
@@ -296,7 +296,7 @@ export async function handleBaileysMessage(msg: WAMessage): Promise<void> {
 
   console.log(`[wh] ← de +${phone}: "${text.slice(0, 60)}"`);
 
-  markMessageRead(phone, waId).catch(() => {});
+  markMessageRead(jid, waId).catch(() => {});
 
   const convo = getOrCreateConversation(phone, senderName);
   insertMessage(convo.id, "user", text, waId);
@@ -340,7 +340,7 @@ export async function handleBaileysMessage(msg: WAMessage): Promise<void> {
   pendingResponses.set(
     convo.id,
     setTimeout(() => {
-      sendDebouncedReply(convo.id, phone).catch((err) =>
+      sendDebouncedReply(convo.id, phone, jid).catch((err) =>
         console.error(`[wh] error en sendDebouncedReply para +${phone}:`, err)
       );
     }, delay)
