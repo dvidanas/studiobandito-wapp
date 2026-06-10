@@ -167,15 +167,23 @@ async function sendDebouncedReply(convoId: number, phone: string): Promise<void>
     return;
   }
 
-  const reply = rawTrimmed.replace(/\n+/g, " ");
-  const messageId = insertMessage(convoId, "assistant", reply, null);
+  const parts = rawTrimmed
+    .split(/\s*---\s*/)
+    .map((p) => p.replace(/\n+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 3);
 
-  try {
-    const { wa_message_id } = await sendTextMessage(phone, reply);
-    updateMessageWaId(messageId, wa_message_id);
-    console.log(`[wh] → enviado a +${phone}`);
-  } catch (err) {
-    console.error(`[wh] error al enviar a +${phone}:`, err);
+  for (let i = 0; i < parts.length; i++) {
+    if (i > 0) await new Promise((res) => setTimeout(res, 2000));
+    const part = parts[i];
+    const messageId = insertMessage(convoId, "assistant", part, null);
+    try {
+      const { wa_message_id } = await sendTextMessage(phone, part);
+      updateMessageWaId(messageId, wa_message_id);
+      console.log(`[wh] → parte ${i + 1}/${parts.length} enviada a +${phone}`);
+    } catch (err) {
+      console.error(`[wh] error al enviar parte ${i + 1} a +${phone}:`, err);
+    }
   }
 
   if (apptConfig?.enabled && offeredSlots.length > 0) {
