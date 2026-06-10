@@ -28,7 +28,64 @@ interface Conversation {
   last_message_role?: "user" | "assistant" | "human" | null;
 }
 
-function Dashboard({ connectionStatus }: { connectionStatus: { status: string; phone?: string; quality?: string; message?: string } }) {
+function QRModal({ status, onClose }: { status: { status: string; qr?: string | null }; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-center gap-5 max-w-sm w-full relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          aria-label="Cerrar"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-xl font-semibold text-gray-900">WhatsApp</span>
+          <span className="text-sm text-gray-500">Studio Bandito</span>
+        </div>
+        {status.qr ? (
+          <img
+            src={status.qr}
+            alt="Código QR de WhatsApp"
+            className="w-64 h-64 rounded-xl border border-gray-200"
+          />
+        ) : (
+          <div className="w-64 h-64 rounded-xl border border-gray-200 bg-gray-50 flex flex-col items-center justify-center gap-2">
+            {status.status === "connecting" || status.status === "starting" ? (
+              <>
+                <div className="w-7 h-7 border-2 border-[var(--color-wa-green,#00a884)] border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-gray-500">Conectando...</p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Generando QR...</p>
+            )}
+          </div>
+        )}
+        <div className="text-center space-y-1">
+          <p className="text-sm font-medium text-gray-800">Escaneá con WhatsApp</p>
+          <p className="text-xs text-gray-500">
+            Dispositivos vinculados → Vincular dispositivo
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          Esperando escaneo...
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ connectionStatus }: { connectionStatus: { status: string; phone?: string; qr?: string | null; quality?: string; message?: string } }) {
+  const [showQRModal, setShowQRModal] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [chatFilter, setChatFilter] = useState<ChatFilter>("todos");
   const searchParams = useSearchParams();
@@ -42,6 +99,13 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
   
   const prevConversations = useRef<Conversation[]>([]);
   
+  // Auto-cerrar modal QR cuando conecta
+  useEffect(() => {
+    if (connectionStatus.status === "connected" && showQRModal) {
+      setShowQRModal(false);
+    }
+  }, [connectionStatus.status, showQRModal]);
+
   // Request Notification permission
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -156,8 +220,14 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
     }
   }
 
+  const isConnected = connectionStatus.status === "connected";
+  const needsQR = ["qr_pending", "connecting", "starting", "closed", "error"].includes(connectionStatus.status);
+
   return (
     <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
+      {showQRModal && (
+        <QRModal status={connectionStatus} onClose={() => setShowQRModal(false)} />
+      )}
       <TopNav />
       <div className="flex flex-1 overflow-hidden">
         <PullToRefresh onRefresh={fetchConversations} className="flex-1 flex flex-col overflow-hidden">
@@ -178,7 +248,17 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
                 </span>
               )}
               <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${connectionStatus.status === "connected" ? "bg-green-500" : "bg-red-500"}`} />
+                {needsQR ? (
+                  <button
+                    onClick={() => setShowQRModal(true)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-amber-500 hover:text-amber-600 transition-colors"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    Escanear QR
+                  </button>
+                ) : (
+                  <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
+                )}
               </div>
             </div>
 
