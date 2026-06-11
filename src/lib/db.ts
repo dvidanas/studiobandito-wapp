@@ -653,7 +653,7 @@ export function getNextAvailableSlots(days: number, durationMinutes = 30): Array
     const dateStr = `${year}-${month}-${day}`;
 
     const slots = getAvailableSlots(dateStr, durationMinutes);
-    result.push(...slots.slice(0, 4).map((s) => ({ ...s, date: dateStr })));
+    result.push(...slots.slice(0, 18).map((s) => ({ ...s, date: dateStr })));
   }
   return result;
 }
