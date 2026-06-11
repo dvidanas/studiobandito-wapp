@@ -51,7 +51,7 @@ export const clientConfig = {
 
   botName: "Soledad",
   botBooking: true,
-  appointmentDuration: 40,
+  appointmentDuration: 30,
   loginPin: "0305",
 
   responseDelayMs: 8000,
