@@ -19,6 +19,7 @@ const CHAT_FILTERS: { key: ChatFilter; label: string }[] = [
 interface Conversation {
   id: number;
   phone: string;
+  jid?: string | null;
   name: string | null;
   mode: "AI" | "HUMAN";
   has_lead: number;

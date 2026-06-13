@@ -3,6 +3,7 @@
 interface Conversation {
   id: number;
   phone: string;
+  jid?: string | null;
   name: string | null;
   mode: "AI" | "HUMAN";
   has_lead: number;
@@ -52,7 +53,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-base font-medium text-[var(--color-wa-text-main)] truncate">
-                  {c.name ?? `+${c.phone}`}
+                  {c.name ?? (c.jid?.endsWith("@lid") ? "Contacto" : `+${c.phone}`)}
                 </span>
                 <span className="text-xs text-[var(--color-wa-text-sec)] flex-shrink-0">
                   {timeAgo(c.last_message_at ?? c.created_at)}

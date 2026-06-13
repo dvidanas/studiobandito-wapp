@@ -7,6 +7,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 interface Conversation {
   id: number;
   phone: string;
+  jid?: string | null;
   name: string | null;
   mode: "AI" | "HUMAN";
   last_message_at: number | null;
@@ -128,11 +129,13 @@ export function ConversationPanel({ conversation, onModeChange, onDelete, onBack
           )}
           <div className="flex flex-col">
             <p className="text-base font-medium text-[var(--color-wa-text-main)] truncate">
-              {conversation.name ?? `+${conversation.phone}`}
+              {conversation.name ?? (conversation.jid?.endsWith("@lid") ? "Contacto" : `+${conversation.phone}`)}
             </p>
-            <p className="text-xs text-[var(--color-wa-text-sec)] truncate">
-              +{conversation.phone}
-            </p>
+            {!conversation.jid?.endsWith("@lid") && (
+              <p className="text-xs text-[var(--color-wa-text-sec)] truncate">
+                +{conversation.phone}
+              </p>
+            )}
           </div>
         </div>
 
@@ -239,7 +242,7 @@ export function ConversationPanel({ conversation, onModeChange, onDelete, onBack
 
       {showDeleteConfirm && (
         <ConfirmDialog
-          message={`¿Eliminar la conversación con ${conversation.name ?? `+${conversation.phone}`}? Esta acción no se puede deshacer.`}
+          message={`¿Eliminar la conversación con ${conversation.name ?? (conversation.jid?.endsWith("@lid") ? "Contacto" : `+${conversation.phone}`)}? Esta acción no se puede deshacer.`}
           onConfirm={confirmDeleteConversation}
           onCancel={() => setShowDeleteConfirm(false)}
         />
