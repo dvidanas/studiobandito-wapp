@@ -135,10 +135,13 @@ async function sendDebouncedReply(convoId: number, phone: string, sendJid: strin
     }
   }
 
+  // Para JIDs @lid (privacidad de WhatsApp) no tenemos el número real de teléfono
+  const contactPhone = sendJid.endsWith("@s.whatsapp.net") ? phone : null;
+
   // Intentar reservar ANTES de que Soledad responda, para que su respuesta refleje la realidad
   let bookedSlot: { date: string; time_start: string } | null = null;
   if (apptConfig?.enabled && offeredSlots.length > 0) {
-    bookedSlot = await tryBookAppointmentFromChat(convoId, phone, history, offeredSlots, duration).catch(
+    bookedSlot = await tryBookAppointmentFromChat(convoId, phone, contactPhone, history, offeredSlots, duration).catch(
       (err) => { console.error("[appt] error en tryBookAppointmentFromChat:", err); return null; }
     );
   }
@@ -203,6 +206,7 @@ async function sendDebouncedReply(convoId: number, phone: string, sendJid: strin
 async function tryBookAppointmentFromChat(
   convoId: number,
   phone: string,
+  contactPhone: string | null,
   history: { role: string; content: string }[],
   offeredSlots: Array<AvailableSlot & { date: string }>,
   defaultDuration: number
@@ -283,7 +287,7 @@ null`;
     duration_minutes: defaultDuration,
     source: "bot",
     contact_name: lead?.name ?? null,
-    contact_phone: phone,
+    contact_phone: contactPhone,
   });
 
   console.log(`[appt] turno PENDIENTE creado id=${id} para +${phone} → ${date} ${time_start}`);
