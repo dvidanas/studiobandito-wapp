@@ -272,11 +272,22 @@ null`;
   }
 
   const lead = getLeadByConversationId(convoId);
+  const convo = getConversationById(convoId);
   const validSlot = offeredSlots.find((s) => s.date === date && s.time_start === time_start);
   if (!validSlot) {
     console.log(`[appt] slot ${date} ${time_start} no está en offeredSlots (${offeredSlots.length} slots disponibles) — posible desfase de sesión`);
     return null;
   }
+
+  const contactName = lead?.name ?? convo?.name ?? null;
+
+  const matchedService = service
+    ? clientConfig.services.find((s) =>
+        s.name.toLowerCase().includes(service.toLowerCase()) ||
+        service.toLowerCase().includes(s.name.toLowerCase().split("/")[0].trim())
+      )
+    : null;
+  const appointmentDuration = matchedService?.duration ?? defaultDuration;
 
   const id = createAppointment({
     resource_id: validSlot.resource_id,
@@ -284,9 +295,9 @@ null`;
     service: service ?? null,
     date,
     time_start,
-    duration_minutes: defaultDuration,
+    duration_minutes: appointmentDuration,
     source: "bot",
-    contact_name: lead?.name ?? null,
+    contact_name: contactName,
     contact_phone: contactPhone,
   });
 
