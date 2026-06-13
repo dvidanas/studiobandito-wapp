@@ -237,7 +237,10 @@ null`;
   }
 
   const clean = raw.trim().replace(/```json|```/g, "").trim();
-  if (clean === "null" || !clean.startsWith("{")) return null;
+  if (clean === "null" || !clean.startsWith("{")) {
+    console.log(`[appt] extractor devolvió null (sin turno detectado): "${clean.slice(0, 80)}"`);
+    return null;
+  }
 
   let parsed: { date?: string; time_start?: string; service?: string | null };
   try {
@@ -248,6 +251,8 @@ null`;
 
   const { date, time_start, service } = parsed;
   if (!date || !time_start) return null;
+
+  console.log(`[appt] extractor detectó: ${date} ${time_start} servicio="${service ?? "null"}"`);
 
   const stillAvailable = getAvailableSlots(date, defaultDuration).some(
     (s) => s.time_start === time_start
@@ -264,7 +269,10 @@ null`;
 
   const lead = getLeadByConversationId(convoId);
   const validSlot = offeredSlots.find((s) => s.date === date && s.time_start === time_start);
-  if (!validSlot) return null;
+  if (!validSlot) {
+    console.log(`[appt] slot ${date} ${time_start} no está en offeredSlots (${offeredSlots.length} slots disponibles) — posible desfase de sesión`);
+    return null;
+  }
 
   const id = createAppointment({
     resource_id: validSlot.resource_id,
