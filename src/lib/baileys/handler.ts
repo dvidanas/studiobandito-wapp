@@ -135,7 +135,19 @@ async function sendDebouncedReply(convoId: number, phone: string, sendJid: strin
     }
   }
 
-  const extraInstruction = availabilityNote || undefined;
+  // Intentar reservar ANTES de que Soledad responda, para que su respuesta refleje la realidad
+  let bookedSlot: { date: string; time_start: string } | null = null;
+  if (apptConfig?.enabled && offeredSlots.length > 0) {
+    bookedSlot = await tryBookAppointmentFromChat(convoId, phone, history, offeredSlots, duration).catch(
+      (err) => { console.error("[appt] error en tryBookAppointmentFromChat:", err); return null; }
+    );
+  }
+
+  let extraInstruction = availabilityNote || undefined;
+  if (bookedSlot) {
+    const bookingNote = `TURNO CONFIRMADO Y GUARDADO: El sistema registró exitosamente el turno para el ${bookedSlot.date} a las ${bookedSlot.time_start}. Confirmale al cliente que quedó agendado para esa fecha y hora.`;
+    extraInstruction = extraInstruction ? `${extraInstruction}\n\n${bookingNote}` : bookingNote;
+  }
 
   const t0 = Date.now();
   let rawReply: string;
@@ -186,12 +198,6 @@ async function sendDebouncedReply(convoId: number, phone: string, sendJid: strin
       console.error(`[wh] error al enviar parte ${i + 1} a +${phone}:`, err);
     }
   }
-
-  if (apptConfig?.enabled && offeredSlots.length > 0) {
-    tryBookAppointmentFromChat(convoId, phone, history, offeredSlots, duration).catch(
-      (err) => console.error("[appt] error en tryBookAppointmentFromChat:", err)
-    );
-  }
 }
 
 async function tryBookAppointmentFromChat(
@@ -200,11 +206,11 @@ async function tryBookAppointmentFromChat(
   history: { role: string; content: string }[],
   offeredSlots: Array<AvailableSlot & { date: string }>,
   defaultDuration: number
-): Promise<void> {
+): Promise<{ date: string; time_start: string } | null> {
   const lastUserMsg = [...history].reverse().find((m) => m.role === "user");
-  if (!lastUserMsg) return;
+  if (!lastUserMsg) return null;
 
-  const slotList = offeredSlots.slice(0, 8).map((s) => `${s.date} ${s.time_start}`).join(", ");
+  const slotList = offeredSlots.map((s) => `${s.date} ${s.time_start}`).join(", ");
   const conversation = history.slice(-6).map((m) =>
     `${m.role === "user" ? "Usuario" : "Bot"}: ${m.content}`
   ).join("\n");
@@ -227,38 +233,38 @@ null`;
     raw = await getRawCompletion(prompt);
   } catch (err) {
     console.error("[appt] error en extracción de turno:", err);
-    return;
+    return null;
   }
 
   const clean = raw.trim().replace(/```json|```/g, "").trim();
-  if (clean === "null" || !clean.startsWith("{")) return;
+  if (clean === "null" || !clean.startsWith("{")) return null;
 
   let parsed: { date?: string; time_start?: string; service?: string | null };
   try {
     parsed = JSON.parse(clean);
   } catch {
-    return;
+    return null;
   }
 
   const { date, time_start, service } = parsed;
-  if (!date || !time_start) return;
+  if (!date || !time_start) return null;
 
   const stillAvailable = getAvailableSlots(date, defaultDuration).some(
     (s) => s.time_start === time_start
   );
   if (!stillAvailable) {
     console.log(`[appt] slot ${date} ${time_start} ya no está disponible, ignorando`);
-    return;
+    return null;
   }
 
   if (hasAppointmentForSlot(convoId, date, time_start)) {
     console.log(`[appt] ya existe turno para conversación ${convoId} en ${date} ${time_start}`);
-    return;
+    return null;
   }
 
   const lead = getLeadByConversationId(convoId);
   const validSlot = offeredSlots.find((s) => s.date === date && s.time_start === time_start);
-  if (!validSlot) return;
+  if (!validSlot) return null;
 
   const id = createAppointment({
     resource_id: validSlot.resource_id,
@@ -273,6 +279,7 @@ null`;
   });
 
   console.log(`[appt] turno PENDIENTE creado id=${id} para +${phone} → ${date} ${time_start}`);
+  return { date, time_start };
 }
 
 export async function handleBaileysMessage(msg: WAMessage): Promise<void> {
