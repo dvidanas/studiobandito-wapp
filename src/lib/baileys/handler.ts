@@ -117,10 +117,10 @@ async function sendDebouncedReply(convoId: number, phone: string, sendJid: strin
   let offeredSlots: Array<AvailableSlot & { date: string }> = [];
   if (apptConfig?.enabled) {
     offeredSlots = getNextAvailableSlots(14, duration);
-    console.log(`[DIAG] slots crudos (${offeredSlots.length} total):`, JSON.stringify(offeredSlots.slice(0, 60).map(s => `${s.date} ${s.time_start}`)));
+    console.log(`[slots] ${offeredSlots.length} disponibles (próximos 14 días)`);
     if (offeredSlots.length > 0) {
       const slotList = offeredSlots
-        .slice(0, 60)
+        .slice(0, 200)
         .map((s) => {
           const d = new Date(s.date + "T12:00:00");
           const dayName = d.toLocaleDateString("es-AR", { weekday: "long" });

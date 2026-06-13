@@ -635,25 +635,43 @@ export function getAvailableSlots(date: string, durationMinutes: number, exclude
 export function getNextAvailableSlots(days: number, durationMinutes = 30): Array<AvailableSlot & { date: string }> {
   const result: Array<AvailableSlot & { date: string }> = [];
   const now = new Date();
+
+  // Hora actual en Argentina para filtrar slots ya pasados en el día de hoy
+  const artTimeParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const artHour = parseInt(artTimeParts.find((p) => p.type === "hour")!.value);
+  const artMinute = parseInt(artTimeParts.find((p) => p.type === "minute")!.value);
+  const artNowMinutes = artHour * 60 + artMinute;
+
+  const dateFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
   for (let i = 0; i < days; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + i);
-    
-    // Obtener la fecha en la zona horaria de Argentina (America/Argentina/Buenos_Aires) en formato YYYY-MM-DD
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Argentina/Buenos_Aires",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    const parts = formatter.formatToParts(d);
+
+    const parts = dateFormatter.formatToParts(d);
     const year = parts.find((p) => p.type === "year")!.value;
     const month = parts.find((p) => p.type === "month")!.value;
     const day = parts.find((p) => p.type === "day")!.value;
     const dateStr = `${year}-${month}-${day}`;
 
-    const slots = getAvailableSlots(dateStr, durationMinutes);
-    result.push(...slots.slice(0, 18).map((s) => ({ ...s, date: dateStr })));
+    let slots = getAvailableSlots(dateStr, durationMinutes);
+
+    // Para hoy (i=0), filtrar slots que ya pasaron en Argentina (con 30 min de buffer)
+    if (i === 0) {
+      slots = slots.filter((s) => timeToMinutes(s.time_start) > artNowMinutes + 30);
+    }
+
+    result.push(...slots.map((s) => ({ ...s, date: dateStr })));
   }
   return result;
 }
