@@ -73,8 +73,11 @@ export async function sendTextMessage(
     throw new Error(`WhatsApp no está conectado (estado: ${state.status})`);
   }
   let jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  console.log(`[send] phone="${phone}" jid="${jid}" isLid=${jid.endsWith("@lid")}`);
   if (jid.endsWith("@lid")) {
-    jid = await resolveLidJid(state.socket, jid);
+    const resolved = await resolveLidJid(state.socket, jid);
+    console.log(`[send] resolved="${resolved}"`);
+    jid = resolved;
   }
   const result = await state.socket.sendMessage(jid, { text });
   return { wa_message_id: result?.key?.id ?? "" };
