@@ -2,12 +2,39 @@ import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  USyncQuery,
+  USyncUser,
   type WASocket,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import path from "node:path";
 import fs from "node:fs";
 import pino from "pino";
+
+const lidCache = new Map<string, string>();
+
+async function resolveLidJid(socket: WASocket, lidJid: string): Promise<string> {
+  const cached = lidCache.get(lidJid);
+  if (cached) return cached;
+
+  try {
+    const query = new USyncQuery()
+      .withContactProtocol()
+      .withUser(new USyncUser().withLid(lidJid));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (socket as any).executeUSyncQuery(query);
+    const phoneJid: string | undefined = result?.list?.[0]?.id;
+    if (phoneJid && phoneJid.endsWith("@s.whatsapp.net")) {
+      lidCache.set(lidJid, phoneJid);
+      console.log(`[lid] resuelto ${lidJid} → ${phoneJid}`);
+      return phoneJid;
+    }
+  } catch (err) {
+    console.error(`[lid] error resolviendo ${lidJid}:`, err);
+  }
+
+  return lidJid;
+}
 
 export type BaileysStatus = "starting" | "connecting" | "qr_pending" | "open" | "closed";
 
@@ -45,7 +72,10 @@ export async function sendTextMessage(
   if (!state.socket || state.status !== "open") {
     throw new Error(`WhatsApp no está conectado (estado: ${state.status})`);
   }
-  const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  let jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  if (jid.endsWith("@lid")) {
+    jid = await resolveLidJid(state.socket, jid);
+  }
   const result = await state.socket.sendMessage(jid, { text });
   return { wa_message_id: result?.key?.id ?? "" };
 }
@@ -53,7 +83,10 @@ export async function sendTextMessage(
 export async function markMessageRead(phone: string, waId: string): Promise<void> {
   const state = getState();
   if (!state.socket || state.status !== "open") return;
-  const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  let jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  if (jid.endsWith("@lid")) {
+    jid = await resolveLidJid(state.socket, jid);
+  }
   try {
     await state.socket.readMessages([{ remoteJid: jid, id: waId, fromMe: false }]);
   } catch {
