@@ -19,12 +19,14 @@ async function resolveLidJid(socket: WASocket, lidJid: string): Promise<string> 
 
   try {
     const query = new USyncQuery()
+      .withContext("interactive")
       .withContactProtocol()
-      .withUser(new USyncUser().withLid(lidJid));
+      .withUser(new USyncUser().withId(lidJid));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (socket as any).executeUSyncQuery(query);
+    console.log(`[lid] usync result: ${JSON.stringify(result)}`);
     const phoneJid: string | undefined = result?.list?.[0]?.id;
-    if (phoneJid && phoneJid.endsWith("@s.whatsapp.net")) {
+    if (phoneJid && phoneJid !== lidJid && phoneJid.endsWith("@s.whatsapp.net")) {
       lidCache.set(lidJid, phoneJid);
       console.log(`[lid] resuelto ${lidJid} → ${phoneJid}`);
       return phoneJid;
