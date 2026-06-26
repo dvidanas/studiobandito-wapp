@@ -310,7 +310,9 @@ export async function handleBaileysMessage(msg: WAMessage): Promise<void> {
   if (!rawJid || rawJid.endsWith("@g.us")) return;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const senderPn: string | undefined = (msg.key as any).senderPn;
+  const msgAny = msg as any;
+  console.log(`[debug] msg.key: ${JSON.stringify(msg.key)} senderPn: ${msgAny.key?.senderPn ?? msgAny.senderPn ?? "none"} verifiedBizName: ${msgAny.verifiedBizName ?? "none"}`);
+  const senderPn: string | undefined = msgAny.key?.senderPn ?? msgAny.senderPn;
   const jid = senderPn && senderPn.endsWith("@s.whatsapp.net") ? senderPn : rawJid;
 
   const waId = msg.key.id!;
