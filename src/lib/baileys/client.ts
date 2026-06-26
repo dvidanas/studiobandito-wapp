@@ -85,7 +85,7 @@ export async function startBaileys(): Promise<void> {
     path.join(process.cwd(), "data", "baileys_session");
   fs.mkdirSync(sessionDir, { recursive: true });
 
-  const logger = pino({ level: "warn" });
+  const logger = pino({ level: "silent" });
 
   async function connect() {
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);

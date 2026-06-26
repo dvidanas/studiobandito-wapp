@@ -312,6 +312,7 @@ export function setConversationHasLead(conversationId: number, value: 0 | 1): vo
 export function deleteConversation(id: number): void {
   const db = getDb();
   const del = db.transaction(() => {
+    db.prepare("UPDATE appointments SET conversation_id = NULL WHERE conversation_id = ?").run(id);
     db.prepare("DELETE FROM leads WHERE conversation_id = ?").run(id);
     db.prepare("DELETE FROM messages WHERE conversation_id = ?").run(id);
     db.prepare("DELETE FROM conversations WHERE id = ?").run(id);
