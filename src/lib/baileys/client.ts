@@ -3,11 +3,19 @@ import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
   type WASocket,
+  type BinaryNode,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import path from "node:path";
 import fs from "node:fs";
 import pino from "pino";
+
+// LID → phone JID mapping captured from raw XML nodes
+const lidToPhone = new Map<string, string>();
+
+export function getPhoneForLid(lid: string): string | undefined {
+  return lidToPhone.get(lid);
+}
 
 export type BaileysStatus = "starting" | "connecting" | "qr_pending" | "open" | "closed";
 
@@ -45,9 +53,15 @@ export async function sendTextMessage(
   if (!state.socket || state.status !== "open") {
     throw new Error(`WhatsApp no está conectado (estado: ${state.status})`);
   }
-  const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  let jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
+  if (jid.endsWith("@lid")) {
+    const resolved = lidToPhone.get(jid);
+    if (resolved) {
+      console.log(`[send] resolviendo LID ${jid} → ${resolved}`);
+      jid = resolved;
+    }
+  }
   const result = await state.socket.sendMessage(jid, { text });
-  console.log(`[send] result key: ${JSON.stringify(result?.key)} status: ${result?.status}`);
   return { wa_message_id: result?.key?.id ?? "" };
 }
 
@@ -88,6 +102,20 @@ export async function startBaileys(): Promise<void> {
 
     getState().socket = socket;
     getState().status = "connecting";
+
+    // Capture sender_pn (real phone JID) from raw message XML nodes
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ws = (socket as any).ws;
+    if (ws && typeof ws.on === "function") {
+      ws.on("CB:message", (node: BinaryNode) => {
+        const from = node?.attrs?.from;
+        const senderPn = node?.attrs?.sender_pn;
+        if (from && senderPn && from.endsWith("@lid")) {
+          lidToPhone.set(from, senderPn);
+          console.log(`[lid] mapping ${from} → ${senderPn}`);
+        }
+      });
+    }
 
     socket.ev.on("creds.update", saveCreds);
 
