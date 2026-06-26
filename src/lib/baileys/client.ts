@@ -169,6 +169,7 @@ export async function startBaileys(): Promise<void> {
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
         if (!msg.message) continue;
+        console.log(`[debug] msg.key: ${JSON.stringify(msg.key)} participant: ${JSON.stringify((msg as Record<string, unknown>).participant)} verifiedBizName: ${JSON.stringify((msg as Record<string, unknown>).verifiedBizName)}`);
         await handleBaileysMessage(msg).catch((err) =>
           console.error("[baileys] error procesando mensaje:", err)
         );
