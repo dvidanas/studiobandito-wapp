@@ -2,41 +2,12 @@ import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
-  USyncQuery,
-  USyncUser,
   type WASocket,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import path from "node:path";
 import fs from "node:fs";
 import pino from "pino";
-
-const lidCache = new Map<string, string>();
-
-async function resolveLidJid(socket: WASocket, lidJid: string): Promise<string> {
-  const cached = lidCache.get(lidJid);
-  if (cached) return cached;
-
-  try {
-    const query = new USyncQuery()
-      .withContext("interactive")
-      .withContactProtocol()
-      .withUser(new USyncUser().withId(lidJid));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (socket as any).executeUSyncQuery(query);
-    console.log(`[lid] usync result: ${JSON.stringify(result)}`);
-    const phoneJid: string | undefined = result?.list?.[0]?.id;
-    if (phoneJid && phoneJid !== lidJid && phoneJid.endsWith("@s.whatsapp.net")) {
-      lidCache.set(lidJid, phoneJid);
-      console.log(`[lid] resuelto ${lidJid} → ${phoneJid}`);
-      return phoneJid;
-    }
-  } catch (err) {
-    console.error(`[lid] error resolviendo ${lidJid}:`, err);
-  }
-
-  return lidJid;
-}
 
 export type BaileysStatus = "starting" | "connecting" | "qr_pending" | "open" | "closed";
 
@@ -74,13 +45,7 @@ export async function sendTextMessage(
   if (!state.socket || state.status !== "open") {
     throw new Error(`WhatsApp no está conectado (estado: ${state.status})`);
   }
-  let jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-  console.log(`[send] phone="${phone}" jid="${jid}" isLid=${jid.endsWith("@lid")}`);
-  if (jid.endsWith("@lid")) {
-    const resolved = await resolveLidJid(state.socket, jid);
-    console.log(`[send] resolved="${resolved}"`);
-    jid = resolved;
-  }
+  const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
   const result = await state.socket.sendMessage(jid, { text });
   return { wa_message_id: result?.key?.id ?? "" };
 }
@@ -88,10 +53,7 @@ export async function sendTextMessage(
 export async function markMessageRead(phone: string, waId: string): Promise<void> {
   const state = getState();
   if (!state.socket || state.status !== "open") return;
-  let jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
-  if (jid.endsWith("@lid")) {
-    jid = await resolveLidJid(state.socket, jid);
-  }
+  const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
   try {
     await state.socket.readMessages([{ remoteJid: jid, id: waId, fromMe: false }]);
   } catch {
@@ -169,9 +131,6 @@ export async function startBaileys(): Promise<void> {
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
         if (!msg.message) continue;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const m = msg as any;
-        console.log(`[debug] msg.key: ${JSON.stringify(msg.key)} participant: ${m.participant ?? "n/a"} pushName: ${m.pushName ?? "n/a"}`);
         await handleBaileysMessage(msg).catch((err) =>
           console.error("[baileys] error procesando mensaje:", err)
         );

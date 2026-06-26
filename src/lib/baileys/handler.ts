@@ -306,8 +306,12 @@ null`;
 }
 
 export async function handleBaileysMessage(msg: WAMessage): Promise<void> {
-  const jid = msg.key.remoteJid;
-  if (!jid || jid.endsWith("@g.us")) return;
+  const rawJid = msg.key.remoteJid;
+  if (!rawJid || rawJid.endsWith("@g.us")) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const senderPn: string | undefined = (msg.key as any).senderPn;
+  const jid = senderPn && senderPn.endsWith("@s.whatsapp.net") ? senderPn : rawJid;
 
   const waId = msg.key.id!;
   const text = extractText(msg);
