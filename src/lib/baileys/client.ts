@@ -169,7 +169,9 @@ export async function startBaileys(): Promise<void> {
       for (const msg of messages) {
         if (msg.key.fromMe) continue;
         if (!msg.message) continue;
-        console.log(`[debug] msg.key: ${JSON.stringify(msg.key)} participant: ${JSON.stringify((msg as Record<string, unknown>).participant)} verifiedBizName: ${JSON.stringify((msg as Record<string, unknown>).verifiedBizName)}`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const m = msg as any;
+        console.log(`[debug] msg.key: ${JSON.stringify(msg.key)} participant: ${m.participant ?? "n/a"} pushName: ${m.pushName ?? "n/a"}`);
         await handleBaileysMessage(msg).catch((err) =>
           console.error("[baileys] error procesando mensaje:", err)
         );
