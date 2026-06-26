@@ -47,6 +47,7 @@ export async function sendTextMessage(
   }
   const jid = phone.includes("@") ? phone : `${phone}@s.whatsapp.net`;
   const result = await state.socket.sendMessage(jid, { text });
+  console.log(`[send] result key: ${JSON.stringify(result?.key)} status: ${result?.status}`);
   return { wa_message_id: result?.key?.id ?? "" };
 }
 
@@ -70,7 +71,7 @@ export async function startBaileys(): Promise<void> {
     path.join(process.cwd(), "data", "baileys_session");
   fs.mkdirSync(sessionDir, { recursive: true });
 
-  const logger = pino({ level: "silent" });
+  const logger = pino({ level: "warn" });
 
   async function connect() {
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
