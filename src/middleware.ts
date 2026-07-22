@@ -3,7 +3,13 @@ export const runtime = "nodejs";
 import { NextResponse, type NextRequest } from "next/server";
 import { verifySessionCookie } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/webhook"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth/login",
+  "/api/webhook",
+  "/api/appointments/available",
+  "/api/settings/services",
+];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
