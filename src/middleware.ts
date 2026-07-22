@@ -7,13 +7,15 @@ const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
   "/api/webhook",
-  "/api/appointments",
   "/api/appointments/available",
   "/api/settings/services",
 ];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  if (req.method === "POST" && pathname === "/api/appointments") {
+    return NextResponse.next();
+  }
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
