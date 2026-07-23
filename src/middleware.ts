@@ -12,6 +12,9 @@ const PUBLIC_PATHS = [
 ];
 
 export function middleware(req: NextRequest) {
+  if (req.method === "OPTIONS") {
+    return NextResponse.next();
+  }
   const { pathname } = req.nextUrl;
   if (req.method === "POST" && pathname === "/api/appointments") {
     return NextResponse.next();
