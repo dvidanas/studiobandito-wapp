@@ -6,7 +6,7 @@ export interface ChatMessage {
 }
 
 export async function getRawCompletion(prompt: string): Promise<string> {
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+  const model = process.env.GEMINI_MODEL ?? "gemini-flash-latest";
   const apiKey = process.env.GEMINI_API_KEY!;
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -28,7 +28,7 @@ export async function getChatCompletion(
   history: ChatMessage[],
   extraInstruction?: string
 ): Promise<string> {
-  const model = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+  const model = process.env.GEMINI_MODEL ?? "gemini-flash-latest";
   const apiKey = process.env.GEMINI_API_KEY!;
   console.log("[llm] usando modelo:", model);
 
