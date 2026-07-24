@@ -93,7 +93,7 @@ function migrate(db: Database.Database) {
       time_end TEXT NOT NULL,
       duration_minutes INTEGER NOT NULL DEFAULT 30,
       status TEXT CHECK(status IN ('pending','confirmed','cancelled')) NOT NULL DEFAULT 'pending',
-      source TEXT CHECK(source IN ('manual','bot')) NOT NULL DEFAULT 'manual',
+      source TEXT CHECK(source IN ('manual','bot','web')) NOT NULL DEFAULT 'manual',
       notes TEXT,
       contact_name TEXT,
       contact_phone TEXT,
@@ -194,6 +194,43 @@ function migrate(db: Database.Database) {
   try {
     db.exec("ALTER TABLE conversations ADD COLUMN jid TEXT");
   } catch { /* ya existe */ }
+
+  // Migración: soporte para source = 'web' en appointments.
+  // SQLite no permite ALTER de un CHECK constraint existente, así que se reconstruye
+  // la tabla dentro de una transacción atómica (todo o nada, sin riesgo de pérdida de datos).
+  {
+    const tableInfo = db
+      .prepare<[], { sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'appointments'")
+      .get();
+    if (tableInfo && !tableInfo.sql.includes("'web'")) {
+      const rebuildAppointmentsTable = db.transaction(() => {
+        db.exec(`
+          CREATE TABLE appointments_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            resource_id INTEGER NOT NULL REFERENCES resources(id),
+            conversation_id INTEGER REFERENCES conversations(id),
+            service TEXT,
+            date TEXT NOT NULL,
+            time_start TEXT NOT NULL,
+            time_end TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL DEFAULT 30,
+            status TEXT CHECK(status IN ('pending','confirmed','cancelled')) NOT NULL DEFAULT 'pending',
+            source TEXT CHECK(source IN ('manual','bot','web')) NOT NULL DEFAULT 'manual',
+            notes TEXT,
+            contact_name TEXT,
+            contact_phone TEXT,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch())
+          );
+          INSERT INTO appointments_new SELECT * FROM appointments;
+          DROP TABLE appointments;
+          ALTER TABLE appointments_new RENAME TO appointments;
+          CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(date);
+          CREATE INDEX IF NOT EXISTS idx_appointments_resource ON appointments(resource_id, date);
+        `);
+      });
+      rebuildAppointmentsTable();
+    }
+  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS promotions (
@@ -523,7 +560,7 @@ export interface Appointment {
   time_end: string;
   duration_minutes: number;
   status: "pending" | "confirmed" | "cancelled";
-  source: "manual" | "bot";
+  source: "manual" | "bot" | "web";
   notes: string | null;
   contact_name: string | null;
   contact_phone: string | null;
@@ -696,7 +733,7 @@ export function createAppointment(data: {
   date: string;
   time_start: string;
   duration_minutes: number;
-  source?: "manual" | "bot";
+  source?: "manual" | "bot" | "web";
   notes?: string | null;
   contact_name?: string | null;
   contact_phone?: string | null;

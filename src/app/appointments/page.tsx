@@ -16,7 +16,7 @@ interface Appointment {
   time_end: string;
   duration_minutes: number;
   status: "pending" | "confirmed" | "cancelled";
-  source: "manual" | "bot";
+  source: "manual" | "bot" | "web";
   notes: string | null;
   contact_name: string | null;
   contact_phone: string | null;
@@ -328,13 +328,18 @@ function DayAppointmentCard({
                 <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9h14v10H5V9zm3 4h.01M16 13h.01" />
                 </svg>
+              ) : a.source === "web" ? (
+                <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="9" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M12 3c2.5 2.7 4 6.5 4 9s-1.5 6.3-4 9c-2.5-2.7-4-6.5-4-9s1.5-6.3 4-9z" />
+                </svg>
               ) : (
                 <svg className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               )}
               <span className="font-semibold text-[var(--color-wa-text-main)]">
-                {a.source === "bot" ? "Bot" : "Manual"}
+                {a.source === "bot" ? "Bot" : a.source === "web" ? "Web" : "Manual"}
               </span>
             </span>
 
@@ -635,6 +640,60 @@ function ListaView({
   );
 }
 
+// ── Pending Module ─────────────────────────────────────────────────────────────
+
+function PendingModule({
+  appointments,
+  onConfirm,
+  onJump,
+}: {
+  appointments: Appointment[];
+  onConfirm: (id: number) => void;
+  onJump: (date: string) => void;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-[var(--color-wa-text-main)] mb-3">Pendientes</h3>
+      {appointments.length === 0 ? (
+        <p className="text-sm text-[var(--color-wa-text-sec)]">Sin turnos pendientes</p>
+      ) : (
+        <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
+          {appointments.map((a) => (
+            <div
+              key={a.id}
+              className="border border-[var(--color-wa-sep)] rounded-xl p-3 flex flex-col gap-2"
+            >
+              <span className="text-xs font-semibold text-[var(--color-wa-text-main)] capitalize">
+                {formatDateLabel(a.date)} · {formatTime(a.time_start)}
+              </span>
+              <span className="text-sm text-[var(--color-wa-text-main)] font-medium truncate">
+                {a.contact_name ?? a.contact_phone ?? "Sin nombre"}
+              </span>
+              {a.service && (
+                <span className="text-xs text-[var(--color-wa-text-sec)] truncate">{a.service}</span>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => onConfirm(a.id)}
+                  className="text-xs px-3 py-1.5 bg-teal-500 text-white rounded-full font-semibold hover:bg-teal-600 active:scale-95 transition-all cursor-pointer"
+                >
+                  Confirmar
+                </button>
+                <button
+                  onClick={() => onJump(a.date)}
+                  className="text-xs px-3 py-1.5 border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] rounded-full font-semibold hover:bg-[var(--color-wa-hover)] active:scale-95 transition-all cursor-pointer"
+                >
+                  Ver día
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function AppointmentsPage() {
@@ -662,8 +721,17 @@ export default function AppointmentsPage() {
   const [modalDuration, setModalDuration] = useState(30);
   const [savingModal, setSavingModal] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const { from, to } = useMemo(() => getMonthBounds(currentMonth), [currentMonth]);
+  const todayStr = useMemo(() => dateToStr(new Date()), []);
+  const pendingAppointments = useMemo(
+    () =>
+      appointments
+        .filter((a) => a.status === "pending" && a.date >= todayStr)
+        .sort((a, b) => (a.date + a.time_start).localeCompare(b.date + b.time_start)),
+    [appointments, todayStr]
+  );
 
   const fetchData = useCallback(async () => {
     try {
@@ -788,6 +856,16 @@ export default function AppointmentsPage() {
     }
   }
 
+  function jumpToDay(date: string) {
+    const [y, m] = date.split("-").map(Number);
+    const dayMonth = new Date(y, m - 1, 1);
+    if (dayMonth.getFullYear() !== currentMonth.getFullYear() || dayMonth.getMonth() !== currentMonth.getMonth()) {
+      setCurrentMonth(dayMonth);
+    }
+    setSelectedDay(date);
+    setViewMode("calendar");
+  }
+
   const goToMonth = (newMonth: Date) => {
     setCurrentMonth(newMonth);
     const { from: nf, to: nt } = getMonthBounds(newMonth);
@@ -828,10 +906,17 @@ export default function AppointmentsPage() {
           <div className="hidden md:flex flex-1 overflow-hidden md:p-3 md:gap-3">
             {viewMode === "calendar" ? (
               <>
-                {/* Left: mini calendar card */}
-                <div className="w-[350px] flex-shrink-0 overflow-y-auto">
+                {/* Left: mini calendar card + pending module */}
+                <div className="w-[350px] flex-shrink-0 overflow-y-auto flex flex-col gap-3">
                   <div className="bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
                     <MiniCalendar {...calendarProps} />
+                  </div>
+                  <div className="bg-white dark:bg-[var(--color-wa-panel-l)] rounded-2xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+                    <PendingModule
+                      appointments={pendingAppointments}
+                      onConfirm={(id) => changeStatus(id, "confirmed")}
+                      onJump={jumpToDay}
+                    />
                   </div>
                 </div>
                 {/* Right: day panel card */}
@@ -852,10 +937,31 @@ export default function AppointmentsPage() {
             )}
           </div>
 
-          {/* Mobile: mini calendar + day panel stacked */}
+          {/* Mobile: collapsible mini calendar + day panel stacked */}
           <div className="md:hidden flex flex-col flex-1 overflow-hidden">
-            <div className="flex-shrink-0 bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)] px-4 pt-3 pb-4">
-              <MiniCalendar {...calendarProps} compact />
+            <div className="flex-shrink-0 bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)]">
+              <button
+                onClick={() => setCalendarOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 cursor-pointer"
+              >
+                <span className="text-sm font-semibold text-[var(--color-wa-text-main)] capitalize">
+                  {formatDateLabel(selectedDay)}
+                </span>
+                <svg
+                  className={`w-4 h-4 text-[var(--color-wa-text-sec)] transition-transform duration-200 ${calendarOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              {calendarOpen && (
+                <div className="px-4 pb-4">
+                  <MiniCalendar {...calendarProps} compact />
+                </div>
+              )}
             </div>
             <div className="flex-1 overflow-hidden flex flex-col">
               <DayPanel {...dayPanelProps} />

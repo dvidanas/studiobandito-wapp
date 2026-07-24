@@ -28,10 +28,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { resource_id, date, time_start, duration_minutes, service, notes, contact_name, contact_phone, conversation_id } = body;
+  const { resource_id, date, time_start, duration_minutes, service, notes, contact_name, contact_phone, conversation_id, source } = body;
 
   if (!resource_id || !date || !time_start || !duration_minutes) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
+  }
+
+  let resolvedSource: "manual" | "bot" | "web" = "manual";
+  if (source === "manual" || source === "bot" || source === "web") {
+    resolvedSource = source;
+  } else {
+    const origin = req.headers.get("origin");
+    if (origin && !origin.includes("studiobanditobot.feer.com.ar")) {
+      resolvedSource = "web";
+    }
   }
 
   const id = createAppointment({
@@ -44,7 +54,7 @@ export async function POST(req: NextRequest) {
     notes: typeof notes === "string" ? notes : null,
     contact_name: typeof contact_name === "string" ? contact_name : null,
     contact_phone: typeof contact_phone === "string" ? contact_phone : null,
-    source: "manual",
+    source: resolvedSource,
   });
 
   return NextResponse.json({ id }, { status: 201 });
