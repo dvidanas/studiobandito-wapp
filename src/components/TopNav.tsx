@@ -6,7 +6,7 @@ import { clientConfig } from "@/lib/client.config";
 
 const TABS = [
   {
-    href: "/appointments",
+    href: "/",
     label: "Turnos",
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -43,7 +43,7 @@ const TABS = [
     ),
   },
   {
-    href: "/",
+    href: "/messages",
     label: "Mensajes",
     icon: (
       <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -535,7 +535,7 @@ export default function LeadsPage() {
                 </div>
                 <div className="mt-3 text-center">
                   <a
-                    href={`/?id=${selectedLead.conversation_id}`}
+                    href={`/messages?id=${selectedLead.conversation_id}`}
                     className="text-sm font-medium text-[var(--color-wa-green)] hover:underline"
                   >
                     Ver conversación completa →
