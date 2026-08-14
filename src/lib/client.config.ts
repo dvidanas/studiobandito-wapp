@@ -5,7 +5,7 @@ export const clientConfig = {
   behavior: "profesional y cercano",
   slogan: "",
   address: "Tucumán 1106 sur, Capital, San Juan",
-  phone: "2646230305",
+  phone: "2646998386",
 
   hours: {
     monday:    { open: "10:00", close: "19:00" },
