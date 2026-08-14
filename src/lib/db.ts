@@ -243,6 +243,20 @@ function migrate(db: Database.Database) {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS clients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      phone TEXT UNIQUE NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      notes TEXT
+    );
+  `);
+
+  try {
+    db.exec("ALTER TABLE appointments ADD COLUMN client_id INTEGER REFERENCES clients(id)");
+  } catch { /* ya existe */ }
+
 }
 
 // ── Tipos ──────────────────────────────────────────────────
@@ -554,6 +568,7 @@ export interface Appointment {
   id: number;
   resource_id: number;
   conversation_id: number | null;
+  client_id: number | null;
   service: string | null;
   date: string;
   time_start: string;
@@ -740,15 +755,20 @@ export function createAppointment(data: {
 }): number {
   const endMins = timeToMinutes(data.time_start) + data.duration_minutes;
   const time_end = minutesToTime(endMins);
+  const client_id =
+    data.contact_name && data.contact_phone
+      ? findOrCreateClient(data.contact_name, data.contact_phone)
+      : null;
   const res = getDb()
     .prepare(
       `INSERT INTO appointments
-        (resource_id, conversation_id, service, date, time_start, time_end, duration_minutes, source, notes, contact_name, contact_phone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (resource_id, conversation_id, client_id, service, date, time_start, time_end, duration_minutes, source, notes, contact_name, contact_phone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       data.resource_id,
       data.conversation_id ?? null,
+      client_id,
       data.service ?? null,
       data.date,
       data.time_start,
@@ -1104,4 +1124,47 @@ export function getMetrics(): MetricsResult {
     appointmentsByDay,
     messagesByDay,
   };
+}
+
+// ── Clientes ────────────────────────────────────────────────
+
+export interface Client {
+  id: number;
+  name: string;
+  phone: string;
+  created_at: string;
+  notes: string | null;
+}
+
+export function findOrCreateClient(name: string, phone: string): number {
+  const db = getDb();
+  const existing = db.prepare<string, { id: number }>("SELECT id FROM clients WHERE phone = ?").get(phone);
+  if (existing) return existing.id;
+  const res = db.prepare("INSERT INTO clients (name, phone) VALUES (?, ?)").run(name, phone);
+  return res.lastInsertRowid as number;
+}
+
+export function getClientById(id: number): Client | null {
+  return getDb().prepare<number, Client>("SELECT * FROM clients WHERE id = ?").get(id) ?? null;
+}
+
+export function getClients(): Client[] {
+  return getDb().prepare<[], Client>("SELECT * FROM clients ORDER BY name ASC").all();
+}
+
+export function searchClients(query: string): Client[] {
+  const like = `%${query}%`;
+  return getDb()
+    .prepare<[string, string], Client>(
+      "SELECT * FROM clients WHERE name LIKE ? OR phone LIKE ? ORDER BY name ASC"
+    )
+    .all(like, like);
+}
+
+export function getClientHistory(clientId: number): Appointment[] {
+  return getDb()
+    .prepare<number, Appointment>(
+      "SELECT * FROM appointments WHERE client_id = ? ORDER BY date DESC, time_start DESC"
+    )
+    .all(clientId);
 }
