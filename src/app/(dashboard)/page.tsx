@@ -9,6 +9,7 @@ import { MiniCalendar } from "@/components/panel/MiniCalendar";
 import { DayPanel } from "@/components/panel/DayPanel";
 import { AppointmentCard } from "@/components/panel/AppointmentCard";
 import { PendingModule } from "@/components/panel/PendingModule";
+import { TurnosToolbar } from "@/components/panel/TurnosToolbar";
 import { EVENTO_TURNOS_NUEVOS } from "@/components/panel/NuevoTurnoWatcher";
 import {
   STATUS_LABELS,
@@ -112,6 +113,8 @@ function AppointmentsView() {
   });
   const [selectedDay, setSelectedDay] = useState(() => dateToStr(hoyArgentina()));
   const [highlightId, setHighlightId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | Appointment["status"]>("todos");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [stats, setStats] = useState<Stats>({ pending: 0, confirmed: 0, cancelled: 0 });
@@ -306,6 +309,29 @@ function AppointmentsView() {
   const prevMonth = () => goToMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const nextMonth = () => goToMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
+  // Stats del día seleccionado. Todo sale de los turnos ya cargados; no hay
+  // ninguna consulta ni métrica nueva.
+  const turnosDelDia = apptsByDay(selectedDay);
+  const vigentesDelDia = turnosDelDia.filter((a) => a.status !== "cancelled");
+  const confirmadosDelDia = turnosDelDia.filter((a) => a.status === "confirmed").length;
+  const pendientesDelDia = turnosDelDia.filter((a) => a.status === "pending").length;
+  const minutosDelDia = vigentesDelDia.reduce((acc, a) => acc + (a.duration_minutes ?? 0), 0);
+  const agendaDelDia =
+    minutosDelDia >= 60
+      ? `${Math.floor(minutosDelDia / 60)}h${minutosDelDia % 60 ? ` ${minutosDelDia % 60}m` : ""}`
+      : `${minutosDelDia}m`;
+
+  const irA = (fecha: Date) => {
+    setSelectedDay(dateToStr(fecha));
+    setCurrentMonth(new Date(fecha.getFullYear(), fecha.getMonth(), 1));
+  };
+  const irAHoy = () => irA(hoyArgentina());
+  const irAManana = () => {
+    const d = hoyArgentina();
+    d.setDate(d.getDate() + 1);
+    irA(d);
+  };
+
   const calendarProps = {
     currentMonth,
     selectedDay,
@@ -324,6 +350,8 @@ function AppointmentsView() {
     onDelete: setDeleteId,
     onEdit: openEditModal,
     highlightId,
+    searchQuery,
+    statusFilter,
   };
 
   return (
@@ -331,8 +359,21 @@ function AppointmentsView() {
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <PullToRefresh onRefresh={fetchData} className="flex-1 flex flex-col overflow-hidden">
-          {/* Desktop: calendar split OR lista */}
-          <div className="hidden md:flex flex-1 overflow-hidden md:p-3 md:gap-3">
+          {/* Desktop: toolbar + calendar split OR lista */}
+          <div className="hidden md:flex flex-col flex-1 overflow-hidden p-3 gap-3">
+            <TurnosToolbar
+              total={turnosDelDia.length}
+              confirmados={confirmadosDelDia}
+              pendientes={pendientesDelDia}
+              agenda={agendaDelDia}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              onIrAHoy={irAHoy}
+              onIrAManana={irAManana}
+            />
+          <div className="flex flex-1 overflow-hidden gap-3 min-h-0">
             {viewMode === "calendar" ? (
               <>
                 {/* Left: mini calendar card + pending module */}
@@ -365,9 +406,24 @@ function AppointmentsView() {
               </div>
             )}
           </div>
+          </div>
 
           {/* Mobile: collapsible mini calendar + day panel stacked */}
           <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+            <div className="flex-shrink-0 p-3">
+              <TurnosToolbar
+                total={turnosDelDia.length}
+                confirmados={confirmadosDelDia}
+                pendientes={pendientesDelDia}
+                agenda={agendaDelDia}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                onIrAHoy={irAHoy}
+                onIrAManana={irAManana}
+              />
+            </div>
             <div className="flex-shrink-0 bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)]">
               <button
                 onClick={() => setCalendarOpen((v) => !v)}

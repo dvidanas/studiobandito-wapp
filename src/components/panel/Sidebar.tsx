@@ -6,8 +6,14 @@ import { useEffect, useState } from "react";
 import { clientConfig } from "@/lib/client.config";
 
 // Portado del patrón del panel de Pasta Lovers, sin el filtrado por roles:
-// Bandito tiene un único login por PIN, así que todas las secciones son
-// visibles siempre.
+// Bandito tiene un único login por PIN, así que todas las secciones listadas
+// son visibles siempre.
+//
+// Fuera del nav a propósito, pero vivas y accesibles por URL directa:
+//  - /messages  el bot de WhatsApp no está activo; la página, sus componentes y
+//               sus rutas API quedan intactos por si vuelve.
+//  - /staff     se llega desde Config → Personal, no se duplica acá.
+//  - /leads     fuera del alcance de esta migración.
 
 interface Tab {
   href: string;
@@ -35,29 +41,11 @@ const TABS: Tab[] = [
     ),
   },
   {
-    href: "/messages",
-    label: "Mensajes",
-    icon: (
-      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-    ),
-  },
-  {
     href: "/metrics",
     label: "Métricas",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" />
-      </svg>
-    ),
-  },
-  {
-    href: "/staff",
-    label: "Personal",
-    icon: (
-      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
     ),
   },

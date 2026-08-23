@@ -15,6 +15,8 @@ export function DayPanel({
   onDelete,
   onEdit,
   highlightId = null,
+  searchQuery = "",
+  statusFilter = "todos",
 }: {
   selectedDay: string;
   appointments: Appointment[];
@@ -24,16 +26,35 @@ export function DayPanel({
   onDelete: (id: number) => void;
   onEdit: (appointment: Appointment) => void;
   highlightId?: number | null;
+  searchQuery?: string;
+  statusFilter?: "todos" | Appointment["status"];
 }) {
   const label = formatDateLabel(selectedDay);
-  const count = appointments.length;
   const esHoy = selectedDay === hoyArgentinaStr();
+
+  // Filtro por texto (nombre o teléfono) y por estado. Sin filtro de zona:
+  // Bandito es mono-recurso.
+  const filtrados = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return appointments.filter((a) => {
+      if (q) {
+        const nombre = (a.contact_name ?? "").toLowerCase();
+        const tel = (a.contact_phone ?? "").toLowerCase();
+        if (!nombre.includes(q) && !tel.includes(q)) return false;
+      }
+      if (statusFilter !== "todos" && a.status !== statusFilter) return false;
+      return true;
+    });
+  }, [appointments, searchQuery, statusFilter]);
+
+  const count = filtrados.length;
+  const hayFiltro = searchQuery.trim() !== "" || statusFilter !== "todos";
 
   // Agrupamos por franja del día, no por hora: con un solo profesional cada hora
   // tiene a lo sumo un turno y agrupar por hora daría grupos de un elemento.
   const grupos = useMemo(() => {
     return FRANJAS.map((franja) => {
-      const turnos = appointments
+      const turnos = filtrados
         .filter((a) => franjaDeHora(a.time_start) === franja.id)
         .sort((a, b) => a.time_start.localeCompare(b.time_start));
       const vigentes = turnos.filter((a) => a.status !== "cancelled");
@@ -51,7 +72,7 @@ export function DayPanel({
           : undefined,
       };
     }).filter((g) => g.turnos.length > 0);
-  }, [appointments, esHoy]);
+  }, [filtrados, esHoy]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -60,7 +81,11 @@ export function DayPanel({
         <div>
           <h2 className="text-base font-semibold text-[var(--color-wa-text-main)] capitalize">{label}</h2>
           <p className="text-sm text-[var(--color-wa-text-sec)]">
-            {count === 0 ? "Sin turnos" : `${count} turno${count !== 1 ? "s" : ""}`}
+            {count === 0
+              ? hayFiltro
+                ? "Sin resultados"
+                : "Sin turnos"
+              : `${count} turno${count !== 1 ? "s" : ""}${hayFiltro ? ` de ${appointments.length}` : ""}`}
           </p>
         </div>
         <button
@@ -84,13 +109,17 @@ export function DayPanel({
             <svg className="w-12 h-12 text-[var(--color-wa-text-sec)] opacity-20 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <p className="text-base text-[var(--color-wa-text-sec)]">Sin turnos este día</p>
-            <button
-              onClick={onAdd}
-              className="mt-3 text-sm text-[var(--color-wa-green)] font-semibold hover:underline"
-            >
-              + Agregar turno
-            </button>
+            <p className="text-base text-[var(--color-wa-text-sec)]">
+              {hayFiltro ? "Ningún turno coincide con el filtro" : "Sin turnos este día"}
+            </p>
+            {!hayFiltro && (
+              <button
+                onClick={onAdd}
+                className="mt-3 text-sm text-[var(--color-wa-green)] font-semibold hover:underline"
+              >
+                + Agregar turno
+              </button>
+            )}
           </div>
         ) : (
           grupos.map((g) => (
