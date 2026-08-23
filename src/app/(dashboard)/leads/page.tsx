@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { TopNav } from "@/components/TopNav";
 import { KanbanBoard } from "@/components/KanbanBoard";
 
 interface Lead {
@@ -221,8 +220,7 @@ export default function LeadsPage() {
   const newCount = leads.filter((l) => l.status === "nuevo").length;
 
   return (
-    <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
-      <TopNav />
+    <div className="flex flex-col h-full min-h-0">
       <div className="px-5 py-3 flex flex-wrap gap-3 items-center justify-between border-b border-[var(--color-wa-sep)] bg-[var(--color-wa-panel-l)]">
         <div>
           <h1 className="text-lg font-semibold text-[var(--color-wa-text-main)]">Gestión de Leads</h1>

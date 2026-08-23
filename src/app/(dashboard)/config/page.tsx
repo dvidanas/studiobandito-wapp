@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { TopNav, BottomNav } from "@/components/TopNav";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 // ── Style constants ──────────────────────────────────────────────────────────
@@ -1070,8 +1069,7 @@ export default function ConfigPage() {
   };
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden bg-[var(--color-wa-bg-main)]">
-      <TopNav />
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
 
       <div className="flex flex-1 overflow-hidden md:p-3 md:gap-3">
         {/* Sidebar desktop */}
@@ -1117,7 +1115,6 @@ export default function ConfigPage() {
         </main>
       </div>
 
-      <BottomNav />
 
       {toast && <Toast msg={toast} onDone={clearToast} />}
     </div>

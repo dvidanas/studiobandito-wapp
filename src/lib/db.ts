@@ -204,6 +204,24 @@ function migrate(db: Database.Database) {
   // Migración: soporte para source = 'web' en appointments.
   // SQLite no permite ALTER de un CHECK constraint existente, así que se reconstruye
   // la tabla dentro de una transacción atómica (todo o nada, sin riesgo de pérdida de datos).
+  //
+  // ⚠️ ESTA MIGRACIÓN ESTÁ DORMIDA Y NO DEBE REACTIVARSE TAL COMO ESTÁ.
+  //
+  // El guard `!sql.includes("'web'")` ya no se cumple en ninguna base viva:
+  // producción y desarrollo pasaron por acá hace tiempo, así que el bloque nunca
+  // vuelve a ejecutarse. Eso es lo único que lo mantiene inofensivo.
+  //
+  // El problema: el CREATE de abajo lista las 14 columnas originales, pero copia
+  // los datos con `INSERT INTO appointments_new SELECT *`, que es posicional. Las
+  // columnas agregadas después por ALTER —`client_id` y `presente`, más abajo en
+  // este mismo archivo— no están en ese CREATE. Si el bloque llegara a correr
+  // sobre una base que ya las tiene, el SELECT * traería 16 columnas contra 14 y
+  // la transacción abortaría; y si alguien "arreglara" el desajuste sin agregar
+  // las columnas al CREATE, se perderían esos datos al hacer DROP TABLE.
+  //
+  // Si alguna vez hay que volver a reconstruir esta tabla: replicar el esquema
+  // COMPLETO y actual en el CREATE (incluyendo client_id y presente) y listar las
+  // columnas explícitamente en el INSERT, nunca `SELECT *`.
   {
     const tableInfo = db
       .prepare<[], { sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'appointments'")
@@ -261,6 +279,13 @@ function migrate(db: Database.Database) {
 
   try {
     db.exec("ALTER TABLE appointments ADD COLUMN client_id INTEGER REFERENCES clients(id)");
+  } catch { /* ya existe */ }
+
+  // Marca si el cliente ya llegó. Es independiente de `status`: un turno puede
+  // estar confirmado y todavía no haberse presentado. Alimenta el contador
+  // "X/Y presentes" de cada franja en el panel.
+  try {
+    db.exec("ALTER TABLE appointments ADD COLUMN presente INTEGER NOT NULL DEFAULT 0");
   } catch { /* ya existe */ }
 
 }
@@ -586,6 +611,8 @@ export interface Appointment {
   contact_name: string | null;
   contact_phone: string | null;
   created_at: number;
+  /** 1 si el cliente ya llegó. Independiente de `status`. */
+  presente: number;
 }
 
 export interface AppointmentWithResource extends Appointment {
@@ -849,6 +876,44 @@ export function updateAppointmentStatus(
   getDb()
     .prepare("UPDATE appointments SET status = ? WHERE id = ?")
     .run(status, id);
+}
+
+/**
+ * Marca o desmarca que el cliente llegó.
+ * Con `presente` undefined alterna el valor actual.
+ */
+export function setAppointmentPresente(
+  id: number,
+  presente?: boolean
+): { ok: true; presente: number } | { ok: false; error: string } {
+  const db = getDb();
+  const fila = db
+    .prepare<[number], { presente: number }>("SELECT presente FROM appointments WHERE id = ?")
+    .get(id);
+  if (!fila) return { ok: false, error: "Turno no encontrado" };
+
+  const valor = presente === undefined ? (fila.presente ? 0 : 1) : presente ? 1 : 0;
+  db.prepare("UPDATE appointments SET presente = ? WHERE id = ?").run(valor, id);
+  return { ok: true, presente: valor };
+}
+
+/**
+ * Turnos creados después de `desde`, para el aviso de turno nuevo del panel.
+ *
+ * `desde` es un timestamp UNIX en segundos, no un texto de fecha: en esta base
+ * `appointments.created_at` es INTEGER (unixepoch()), a diferencia del TEXT que
+ * usa el proyecto del que se portó este patrón.
+ */
+export function listAppointmentsNuevos(desde: number): AppointmentWithResource[] {
+  return getDb()
+    .prepare<[number], AppointmentWithResource>(
+      `SELECT a.*, r.name as resource_name
+       FROM appointments a
+       JOIN resources r ON a.resource_id = r.id
+       WHERE a.created_at > ?
+       ORDER BY a.created_at ASC`
+    )
+    .all(desde);
 }
 
 export function updateAppointment(

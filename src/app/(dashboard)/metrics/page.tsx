@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { TopNav, BottomNav } from "@/components/TopNav";
 
 interface MetricsData {
   contacts: { total: number; thisWeek: number; thisMonth: number };
@@ -278,8 +277,7 @@ export default function MetricsPage() {
   const originTotal = data ? data.appointments.fromBot + data.appointments.fromManual : 0;
 
   return (
-    <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
-      <TopNav />
+    <div className="flex flex-col h-full min-h-0">
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
         <div className="max-w-6xl mx-auto space-y-4">
 
@@ -479,7 +477,6 @@ export default function MetricsPage() {
 
         </div>
       </main>
-      <BottomNav />
     </div>
   );
 }

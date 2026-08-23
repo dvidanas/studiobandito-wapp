@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { TopNav, BottomNav } from "@/components/TopNav";
+import { MONTH_NAMES, formatTime } from "@/lib/panelDates";
 import { PullToRefresh } from "@/components/PullToRefresh";
 
 interface Client {
@@ -27,14 +27,11 @@ const STATUS_COLORS = {
   cancelled: "text-red-500 dark:text-red-400",
 };
 
-const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-
+// Formato propio de esta vista: sin día de la semana, a diferencia del
+// formatDateLabel compartido de panelDates.
 function formatDateLabel(str: string): string {
   const d = new Date(str + "T12:00:00Z");
   return `${d.getUTCDate()} de ${MONTH_NAMES[d.getUTCMonth()].toLowerCase()}`;
-}
-function formatTime(t: string): string {
-  return t.slice(0, 5);
 }
 
 function ClientHistoryPanel({ clientId }: { clientId: number | null }) {
@@ -152,8 +149,7 @@ export default function ClientsPage() {
   const filteredClients = useMemo(() => clients, [clients]);
 
   return (
-    <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
-      <TopNav />
+    <div className="flex flex-col h-full min-h-0">
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <PullToRefresh onRefresh={fetchData} className="flex-1 flex flex-col overflow-hidden">
@@ -226,7 +222,6 @@ export default function ClientsPage() {
         </div>
       )}
 
-      <BottomNav />
     </div>
   );
 }

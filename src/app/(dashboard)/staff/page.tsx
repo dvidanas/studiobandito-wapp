@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { TopNav, BottomNav } from "@/components/TopNav";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 interface Resource {
@@ -154,8 +153,7 @@ export default function StaffPage() {
   const selected = staff.find((r) => r.id === selectedId) ?? null;
 
   return (
-    <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
-      <TopNav />
+    <div className="flex flex-col h-full min-h-0">
 
       <div className="flex-1 flex min-h-0 md:p-3 md:gap-3 overflow-hidden">
 
@@ -330,7 +328,6 @@ export default function StaffPage() {
         </main>
       </div>
 
-      <BottomNav />
 
       {deleteTarget && (
         <ConfirmDialog

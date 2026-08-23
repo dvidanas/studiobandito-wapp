@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ConnectionGate } from "@/components/ConnectionGate";
-import { TopNav, BottomNav } from "@/components/TopNav";
 import { ConversationList } from "@/components/ConversationList";
 import { ConversationPanel } from "@/components/ConversationPanel";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -225,11 +224,10 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
   const needsQR = ["qr_pending", "connecting", "starting", "closed", "error"].includes(connectionStatus.status);
 
   return (
-    <div className="flex flex-col h-dvh bg-[var(--color-wa-bg-main)]">
+    <div className="flex flex-col h-full min-h-0">
       {showQRModal && (
         <QRModal status={connectionStatus} onClose={() => setShowQRModal(false)} />
       )}
-      <TopNav />
       <div className="flex flex-1 overflow-hidden">
         <PullToRefresh onRefresh={fetchConversations} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex flex-1 overflow-hidden md:p-3 md:gap-3">
@@ -343,7 +341,6 @@ function Dashboard({ connectionStatus }: { connectionStatus: { status: string; p
           </div>
         </PullToRefresh>
       </div>
-      <BottomNav />
     </div>
   );
 }
