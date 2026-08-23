@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAvailabilityOverview, getBusinessHours } from "@/lib/db";
+import {
+  getAvailabilityOverview,
+  getBusinessHours,
+  lastSlotStart,
+  shortestServiceDuration,
+} from "@/lib/db";
 import { clientConfig } from "@/lib/client.config";
 
 export const dynamic = "force-dynamic";
@@ -39,11 +44,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `El rango no puede superar ${MAX_DAYS} días` }, { status: 400 });
   }
 
+  // Cada día lleva `last_start`: el último horario en el que se puede EMPEZAR un
+  // turno, no el cierre de la ventana. Se calcula con el servicio activo más
+  // corto (el caso más favorable) y con la misma regla que usa el calendario, así
+  // que se recalcula solo si cambian los horarios o la duración de los servicios.
+  const referenceDuration = shortestServiceDuration() ?? duration;
+  const hours = getBusinessHours().hours;
+  const weekly = Object.fromEntries(
+    Object.entries(hours).map(([day, slot]) => [
+      day,
+      slot
+        ? { ...slot, last_start: lastSlotStart(slot.open, slot.close, referenceDuration) }
+        : null,
+    ])
+  );
+
   return NextResponse.json({
     from,
     to,
     duration,
-    weekly: getBusinessHours().hours,
+    reference_duration: referenceDuration,
+    weekly,
     days: getAvailabilityOverview(from, to, duration),
   });
 }

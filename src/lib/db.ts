@@ -1164,6 +1164,35 @@ export function getBusinessHours(): BusinessHoursView {
   return { hours, resourceCount, editable: resourceCount === 1, collapsedDays };
 }
 
+/**
+ * Último horario en el que se puede EMPEZAR un turno dentro de una ventana.
+ * Usa la misma regla que generateSlots (el turno tiene que entrar completo antes
+ * del cierre), así que el footer de la landing nunca puede anunciar una hora que
+ * el calendario después no ofrezca. Devuelve null si no entra ningún turno.
+ */
+export function lastSlotStart(
+  open: string,
+  close: string,
+  durationMinutes: number
+): string | null {
+  const start = timeToMinutes(open);
+  const end = timeToMinutes(close);
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return null;
+  if (start + durationMinutes > end) return null;
+  const steps = Math.floor((end - start - durationMinutes) / durationMinutes);
+  return minutesToTime(start + steps * durationMinutes);
+}
+
+/** Duración del servicio activo más corto, que da el último inicio más tardío. */
+export function shortestServiceDuration(): number | null {
+  const row = getDb()
+    .prepare<[], { duration_minutes: number }>(
+      "SELECT MIN(duration_minutes) as duration_minutes FROM services WHERE active = 1 AND duration_minutes > 0"
+    )
+    .get();
+  return row?.duration_minutes ?? null;
+}
+
 export type SetBusinessHoursResult =
   | { ok: true }
   | { ok: false; error: string; resourceCount: number; invalidDays?: string[] };
