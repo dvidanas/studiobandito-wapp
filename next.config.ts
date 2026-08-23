@@ -21,6 +21,14 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/api/availability/overview",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type" },
+        ],
+      },
+      {
         source: "/api/settings/services",
         headers: [
           { key: "Access-Control-Allow-Origin", value: "*" },

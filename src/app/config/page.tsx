@@ -442,15 +442,29 @@ function PromoForm({ form, setForm, saving, onSave, onCancel }: {
 }
 
 // ── Section: Horarios ────────────────────────────────────────────────────────
+// Esta sección edita availability_slots (la misma tabla que Personal →
+// Disponibilidad semanal), NO una configuración de horarios aparte. Con una sola
+// persona activa, el horario del negocio ES su disponibilidad. Con varias, pasa
+// a modo lectura mostrando la envolvente. Ver CLAUDE.md.
 function SectionHorarios({ onSaved }: { onSaved: () => void }) {
   const [hours, setHours] = useState<Record<string, { open: string; close: string } | null>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editable, setEditable] = useState(true);
+  const [resourceCount, setResourceCount] = useState(1);
+  const [collapsedDays, setCollapsedDays] = useState<string[]>([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetch("/api/settings/business")
       .then((r) => r.json())
-      .then((d) => { setHours(d.hours ?? {}); setLoading(false); });
+      .then((d) => {
+        setHours(d.hours ?? {});
+        setEditable(d.hours_editable ?? true);
+        setResourceCount(d.hours_resource_count ?? 1);
+        setCollapsedDays(d.hours_collapsed_days ?? []);
+        setLoading(false);
+      });
   }, []);
 
   const toggle = (day: string) => {
@@ -469,12 +483,19 @@ function SectionHorarios({ onSaved }: { onSaved: () => void }) {
 
   const save = async () => {
     setSaving(true);
-    await fetch("/api/settings/business", {
+    setError("");
+    const res = await fetch("/api/settings/business", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ hours }),
     });
     setSaving(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "No se pudo guardar el horario.");
+      if (res.status === 409) setEditable(false);
+      return;
+    }
     onSaved();
   };
 
@@ -482,6 +503,20 @@ function SectionHorarios({ onSaved }: { onSaved: () => void }) {
 
   return (
     <Card title="Horarios de atención">
+      {!editable && (
+        <div className="mb-4 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-sm text-amber-900 dark:text-amber-200">
+          {resourceCount === 0 ? (
+            <>No hay personal activo. Creá al menos una persona en <strong>Personal</strong> para poder cargar horarios.</>
+          ) : (
+            <>Hay <strong>{resourceCount} personas</strong> cargadas. Acá se muestra el horario general del local (de la primera apertura al último cierre). Para cambiarlo, editá el horario de cada persona en <strong>Personal → Disponibilidad semanal</strong>.</>
+          )}
+        </div>
+      )}
+      {editable && collapsedDays.length > 0 && (
+        <div className="mb-4 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-sm text-amber-900 dark:text-amber-200">
+          Hay más de un tramo horario cargado en: <strong>{collapsedDays.map((d) => DAYS_ES[d] ?? d).join(", ")}</strong>. Acá se muestra unificado; si guardás, queda un solo tramo por día.
+        </div>
+      )}
       <div className="flex flex-col gap-2">
         {DAYS_ORDER.map((day) => {
           const slot = hours[day];
@@ -491,7 +526,8 @@ function SectionHorarios({ onSaved }: { onSaved: () => void }) {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => toggle(day)}
-                  className={`relative rounded-full transition-colors flex-shrink-0 ${isOpen ? "bg-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)]"}`}
+                  disabled={!editable}
+                  className={`relative rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${isOpen ? "bg-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)]"}`}
                   style={{ height: "22px", width: "40px" }}
                 >
                   <span
@@ -510,6 +546,7 @@ function SectionHorarios({ onSaved }: { onSaved: () => void }) {
                     type="time"
                     className="flex-1 sm:flex-none sm:w-32 bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-2 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] focus:ring-2 focus:ring-[var(--color-wa-green)]/20 transition-colors"
                     value={(slot as { open: string; close: string }).open}
+                    disabled={!editable}
                     onChange={(e) => updateTime(day, "open", e.target.value)}
                   />
                   <span className="text-[var(--color-wa-text-sec)] text-sm flex-shrink-0">a</span>
@@ -517,6 +554,7 @@ function SectionHorarios({ onSaved }: { onSaved: () => void }) {
                     type="time"
                     className="flex-1 sm:flex-none sm:w-32 bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-2 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] focus:ring-2 focus:ring-[var(--color-wa-green)]/20 transition-colors"
                     value={(slot as { open: string; close: string }).close}
+                    disabled={!editable}
                     onChange={(e) => updateTime(day, "close", e.target.value)}
                   />
                 </div>
@@ -525,9 +563,14 @@ function SectionHorarios({ onSaved }: { onSaved: () => void }) {
           );
         })}
       </div>
-      <div className="mt-5 flex justify-end">
-        <button className={BTN_PRIMARY} onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
-      </div>
+      {error && (
+        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
+      {editable && (
+        <div className="mt-5 flex justify-end">
+          <button className={BTN_PRIMARY} onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
+        </div>
+      )}
     </Card>
   );
 }

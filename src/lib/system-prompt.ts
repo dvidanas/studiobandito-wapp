@@ -1,5 +1,9 @@
-import { listServices, listPromotions, getAllSettings } from "./db";
+import { listServices, listPromotions, getAllSettings, getBusinessHours } from "./db";
 import { clientConfig } from "./client.config";
+
+const DAY_ORDER = [
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+] as const;
 
 const DAY_NAMES: Record<string, string> = {
   monday: "lunes", tuesday: "martes", wednesday: "miércoles",
@@ -17,16 +21,14 @@ export function buildSystemPrompt(): string {
   const address = settings.address ?? clientConfig.address;
   const phone = settings.phone ?? String(clientConfig.phone);
 
-  const hours: Record<string, { open: string; close: string } | null> = settings.hours
-    ? JSON.parse(settings.hours)
-    : clientConfig.hours;
+  // El horario sale de availability_slots (fuente de verdad de turnos), no de
+  // la clave settings.hours, que quedó muerta. Ver CLAUDE.md.
+  const { hours } = getBusinessHours();
 
-  const hoursText = Object.entries(hours)
+  const hoursText = DAY_ORDER
+    .map((day) => [day, hours[day]] as const)
     .filter(([, v]) => v !== null)
-    .map(([day, v]) => {
-      const slot = v as { open: string; close: string };
-      return `${DAY_NAMES[day] ?? day} ${slot.open}–${slot.close}`;
-    })
+    .map(([day, v]) => `${DAY_NAMES[day] ?? day} ${v!.open}–${v!.close}`)
     .join(", ");
 
   const servicesBlock =

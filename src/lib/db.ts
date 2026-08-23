@@ -156,6 +156,12 @@ function migrate(db: Database.Database) {
     );
   `);
 
+  // Limpieza: la clave `hours` guardaba un horario semanal paralelo que solo
+  // alimentaba el prompt del bot y nunca afectó los turnos. La fuente de verdad
+  // es availability_slots (ver CLAUDE.md). Se borra para que nadie la lea por
+  // error más adelante. Idempotente; se puede quitar en cualquier momento.
+  db.prepare("DELETE FROM settings WHERE key = 'hours'").run();
+
   // Seed settings desde client.config si la tabla está vacía
   const settingsCount = db.prepare<[], { count: number }>("SELECT COUNT(*) as count FROM settings").get()!;
   if (settingsCount.count === 0) {
@@ -729,6 +735,60 @@ export function getNextAvailableSlots(days: number, durationMinutes = 30): Array
   return result;
 }
 
+/** Fecha de hoy (YYYY-MM-DD) y minutos transcurridos, en hora de Argentina. */
+function nowInArgentina(): { date: string; minutes: number } {
+  const now = new Date();
+  const timeParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const hour = parseInt(timeParts.find((p) => p.type === "hour")!.value);
+  const minute = parseInt(timeParts.find((p) => p.type === "minute")!.value);
+
+  const dateParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const get = (t: string) => dateParts.find((p) => p.type === t)!.value;
+
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, minutes: hour * 60 + minute };
+}
+
+/**
+ * Cantidad de turnos libres por fecha en un rango, para que la landing pueda
+ * deshabilitar en el calendario los días sin disponibilidad ANTES de que el
+ * visitante los clickee. Un día cerrado (blocked_slots 00:00-23:59), sin
+ * availability_slots, o con la agenda llena, devuelve 0 igual.
+ * Para hoy solo cuenta los horarios que todavía no pasaron (hora de Argentina).
+ */
+export function getAvailabilityOverview(
+  from: string,
+  to: string,
+  durationMinutes: number
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  const art = nowInArgentina();
+
+  const start = new Date(from + "T12:00:00Z");
+  const end = new Date(to + "T12:00:00Z");
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return result;
+
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    const dateStr = cursor.toISOString().slice(0, 10);
+    let slots = getAvailableSlots(dateStr, durationMinutes);
+    if (dateStr === art.date) {
+      slots = slots.filter((s) => timeToMinutes(s.time_start) > art.minutes + 30);
+    }
+    result[dateStr] = slots.length;
+  }
+
+  return result;
+}
+
 export function listAppointments(from: string, to: string): AppointmentWithResource[] {
   return getDb()
     .prepare<[string, string], AppointmentWithResource>(
@@ -1016,6 +1076,151 @@ export function setAvailabilityForResource(
   db.prepare("DELETE FROM availability_slots WHERE resource_id = ?").run(resourceId);
   const ins = db.prepare("INSERT INTO availability_slots (resource_id, day_of_week, time_start, time_end) VALUES (?, ?, ?, ?)");
   for (const s of slots) ins.run(resourceId, s.day_of_week, s.time_start, s.time_end);
+}
+
+// ── Horario del negocio (vista sobre availability_slots) ─────
+
+// Fuente de verdad única de días/horarios: la tabla availability_slots.
+// Estas funciones son la vista "de negocio" sobre esa tabla, que usa la sección
+// Config → Horarios. NO existe un horario general aparte: con un solo recurso
+// activo, el horario del negocio ES la disponibilidad de ese recurso.
+// Ver CLAUDE.md ("Dos fuentes de verdad") para el porqué.
+
+export const DAY_KEYS = [
+  "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+] as const;
+
+export type DayKey = (typeof DAY_KEYS)[number];
+export type BusinessHours = Record<DayKey, { open: string; close: string } | null>;
+
+export interface BusinessHoursView {
+  hours: BusinessHours;
+  /** Recursos activos. Con !== 1 la escritura queda bloqueada. */
+  resourceCount: number;
+  editable: boolean;
+  /** Días con más de una ventana horaria: guardar las unifica en una sola. */
+  collapsedDays: DayKey[];
+}
+
+function emptyHours(): BusinessHours {
+  return {
+    sunday: null, monday: null, tuesday: null, wednesday: null,
+    thursday: null, friday: null, saturday: null,
+  };
+}
+
+function isValidTime(value: unknown): value is string {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+/**
+ * Deriva el horario semanal del negocio desde availability_slots.
+ * Con varios recursos activos devuelve la envolvente por día:
+ * min(time_start) – max(time_end). Con varias ventanas en un mismo día
+ * (turno cortado) colapsa igual, y lo reporta en collapsedDays.
+ */
+export function getBusinessHours(): BusinessHoursView {
+  const db = getDb();
+  const resourceCount = db
+    .prepare<[], { count: number }>("SELECT COUNT(*) as count FROM resources WHERE active = 1")
+    .get()!.count;
+
+  const rows = db
+    .prepare<[], { day_of_week: number; time_start: string; time_end: string }>(
+      `SELECT s.day_of_week, s.time_start, s.time_end
+       FROM availability_slots s
+       JOIN resources r ON r.id = s.resource_id
+       WHERE r.active = 1`
+    )
+    .all();
+
+  const hours = emptyHours();
+  const windowsPerDay = new Map<number, number>();
+
+  for (const row of rows) {
+    const key = DAY_KEYS[row.day_of_week];
+    if (!key) continue;
+    windowsPerDay.set(row.day_of_week, (windowsPerDay.get(row.day_of_week) ?? 0) + 1);
+    const current = hours[key];
+    hours[key] = current
+      ? {
+          open: row.time_start < current.open ? row.time_start : current.open,
+          close: row.time_end > current.close ? row.time_end : current.close,
+        }
+      : { open: row.time_start, close: row.time_end };
+  }
+
+  // Solo tiene sentido con un recurso (turno cortado de esa persona). Con
+  // varios, las "ventanas múltiples" son de personas distintas y la escritura
+  // ya está bloqueada, así que avisar sería ruido.
+  const collapsedDays =
+    resourceCount === 1
+      ? [...windowsPerDay.entries()]
+          .filter(([, count]) => count > 1)
+          .map(([day]) => DAY_KEYS[day])
+          .filter((k): k is DayKey => Boolean(k))
+      : [];
+
+  return { hours, resourceCount, editable: resourceCount === 1, collapsedDays };
+}
+
+export type SetBusinessHoursResult =
+  | { ok: true }
+  | { ok: false; error: string; resourceCount: number; invalidDays?: string[] };
+
+/**
+ * Escribe el horario semanal en availability_slots del único recurso activo.
+ * Con 0 o 2+ recursos activos NO escribe: pisar el horario general sobre varios
+ * recursos borraría la disponibilidad individual de cada uno en silencio.
+ * En ese caso hay que editar en Config → Personal.
+ */
+export function setBusinessHours(hours: Partial<BusinessHours>): SetBusinessHoursResult {
+  const resources = getDb()
+    .prepare<[], { id: number }>("SELECT id FROM resources WHERE active = 1")
+    .all();
+
+  if (resources.length !== 1) {
+    return {
+      ok: false,
+      resourceCount: resources.length,
+      error:
+        resources.length === 0
+          ? "No hay personal activo. Creá al menos una persona en Config → Personal."
+          : `Hay ${resources.length} personas activas. Editá el horario de cada una en Config → Personal → Disponibilidad semanal.`,
+    };
+  }
+
+  // Un día con horario inválido se rechaza en vez de descartarse en silencio:
+  // un día que el usuario pidió abrir y desaparece sin aviso es justo el bug
+  // que este refactor vino a eliminar.
+  const slots: Array<{ day_of_week: number; time_start: string; time_end: string }> = [];
+  const invalidDays: string[] = [];
+
+  for (const [key, value] of Object.entries(hours)) {
+    const day = DAY_KEYS.indexOf(key as DayKey);
+    if (day === -1) {
+      invalidDays.push(key);
+      continue;
+    }
+    if (!value) continue; // null = cerrado ese día
+    if (!isValidTime(value.open) || !isValidTime(value.close) || value.close <= value.open) {
+      invalidDays.push(key);
+      continue;
+    }
+    slots.push({ day_of_week: day, time_start: value.open, time_end: value.close });
+  }
+
+  if (invalidDays.length) {
+    return {
+      ok: false,
+      resourceCount: resources.length,
+      invalidDays,
+      error: `Horario inválido en: ${invalidDays.join(", ")}. La hora de cierre debe ser posterior a la de apertura.`,
+    };
+  }
+
+  setAvailabilityForResource(resources[0].id, slots);
+  return { ok: true };
 }
 
 // ── Closed dates (special closed days) ──────────────────────

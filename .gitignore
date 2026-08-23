@@ -10,10 +10,10 @@ out/
 .env.local
 .env.*.local
 
-# base de datos local
-data/*.db
-data/*.db-shm
-data/*.db-wal
+# datos locales: DB, backups automáticos y sesión de WhatsApp (credenciales).
+# Se ignora data/ entero, no solo los .db: baileys_session guarda las claves de
+# la sesión de WhatsApp y no debe llegar nunca a un commit.
+data/
 
 # OS
 .DS_Store
