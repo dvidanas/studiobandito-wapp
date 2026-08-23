@@ -25,3 +25,7 @@ npm-debug.log*
 
 # Google Drive
 desktop.ini
+
+# typescript: lo regenera "next build"/"next dev" en cada corrida.
+next-env.d.ts
+*.tsbuildinfo
