@@ -1447,17 +1447,53 @@ export function getClientById(id: number): Client | null {
   return getDb().prepare<number, Client>("SELECT * FROM clients WHERE id = ?").get(id) ?? null;
 }
 
-export function getClients(): Client[] {
-  return getDb().prepare<[], Client>("SELECT * FROM clients ORDER BY name ASC").all();
+export interface ClientWithVisits extends Client {
+  /** Turnos no cancelados que ya ocurrieron. */
+  visits: number;
+  /** Fecha (YYYY-MM-DD) del último turno cumplido, o null si nunca vino. */
+  last_visit: string | null;
 }
 
-export function searchClients(query: string): Client[] {
-  const like = `%${query}%`;
+/**
+ * Visitas y última visita se calculan al vuelo desde `appointments`; no hay
+ * contadores guardados en `clients`. Duplicar el dato sería repetir el error de
+ * las dos fuentes de verdad que documenta el CLAUDE.md de la raíz.
+ *
+ * Un turno cuenta como visita si no está cancelado y su fecha ya pasó: una
+ * reserva para mañana todavía no es una visita, y mostrarla como "última visita"
+ * sería directamente falso.
+ *
+ * El vínculo es `appointments.client_id`, el mismo que usa getClientHistory().
+ * Se evaluó matchear también por teléfono para alcanzar turnos viejos sin
+ * client_id: sobre los datos reales eso suma 2 turnos de 253 (204 se cargaron a
+ * mano, sin teléfono), así que no compensa la fragilidad de comparar strings.
+ */
+function clientsWithVisitsSql(conFiltro: boolean): string {
+  return `
+    SELECT c.*,
+           COUNT(a.id) AS visits,
+           MAX(a.date) AS last_visit
+      FROM clients c
+      LEFT JOIN appointments a
+             ON a.client_id = c.id
+            AND a.status != 'cancelled'
+            AND a.date <= @hoy
+     ${conFiltro ? "WHERE c.name LIKE @like OR c.phone LIKE @like" : ""}
+     GROUP BY c.id
+     ORDER BY c.name ASC
+  `;
+}
+
+export function getClients(): ClientWithVisits[] {
   return getDb()
-    .prepare<[string, string], Client>(
-      "SELECT * FROM clients WHERE name LIKE ? OR phone LIKE ? ORDER BY name ASC"
-    )
-    .all(like, like);
+    .prepare<{ hoy: string }, ClientWithVisits>(clientsWithVisitsSql(false))
+    .all({ hoy: nowInArgentina().date });
+}
+
+export function searchClients(query: string): ClientWithVisits[] {
+  return getDb()
+    .prepare<{ hoy: string; like: string }, ClientWithVisits>(clientsWithVisitsSql(true))
+    .all({ hoy: nowInArgentina().date, like: `%${query}%` });
 }
 
 export function getClientHistory(clientId: number): Appointment[] {
