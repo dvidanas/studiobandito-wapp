@@ -14,6 +14,7 @@ export function DayPanel({
   onStatusChange,
   onDelete,
   onEdit,
+  onTogglePresente,
   highlightId = null,
   searchQuery = "",
   statusFilter = "todos",
@@ -25,6 +26,7 @@ export function DayPanel({
   onStatusChange: (id: number, status: Appointment["status"]) => void;
   onDelete: (id: number) => void;
   onEdit: (appointment: Appointment) => void;
+  onTogglePresente: (id: number, presente: boolean) => void;
   highlightId?: number | null;
   searchQuery?: string;
   statusFilter?: "todos" | Appointment["status"];
@@ -77,22 +79,54 @@ export function DayPanel({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Day header */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-[var(--color-wa-sep)] flex-shrink-0">
-        <div>
-          <h2 className="text-base font-semibold text-[var(--color-wa-text-main)] capitalize">{label}</h2>
-          <p className="text-sm text-[var(--color-wa-text-sec)]">
-            {count === 0
-              ? hayFiltro
-                ? "Sin resultados"
-                : "Sin turnos"
-              : `${count} turno${count !== 1 ? "s" : ""}${hayFiltro ? ` de ${appointments.length}` : ""}`}
-          </p>
+      <div className="px-4 py-3.5 flex items-center justify-between gap-3 border-b border-[var(--color-wa-sep)] flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Decorativo: la fecha ya está escrita al lado, así que se oculta a
+              los lectores de pantalla en vez de repetirla. */}
+          <div
+            aria-hidden="true"
+            className="hidden sm:flex w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 items-center justify-center flex-shrink-0"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-bold text-[var(--color-wa-text-main)] capitalize leading-none">
+                {label}
+              </h2>
+              {/* Píldora con el conteo. Cuando hay filtro activo aclara sobre
+                  cuántos turnos se está filtrando, para que no parezca que
+                  desaparecieron. */}
+              <span
+                className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
+                  count === 0
+                    ? "bg-[var(--color-wa-hover)] text-[var(--color-wa-text-sec)] border-[var(--color-wa-sep)]"
+                    : "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
+                }`}
+              >
+                {count === 0
+                  ? hayFiltro
+                    ? "Sin resultados"
+                    : "Sin turnos"
+                  : `${count} turno${count !== 1 ? "s" : ""}${hayFiltro ? ` de ${appointments.length}` : ""}`}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--color-wa-text-sec)] mt-1 font-medium">
+              {hayFiltro ? "Resultado de la búsqueda en este día" : "Listado completo de turnos programados"}
+            </p>
+          </div>
         </div>
         <button
           onClick={onAdd}
-          className="text-sm font-semibold text-[var(--color-wa-green)] hover:underline"
+          className="text-xs p-2.5 md:px-4 md:py-2.5 bg-teal-500 text-white rounded-xl font-bold hover:bg-teal-600 active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer flex-shrink-0"
+          title="Nuevo turno"
         >
-          + Agregar
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+          </svg>
+          <span className="hidden md:inline">Nuevo Turno</span>
         </button>
       </div>
 
@@ -139,6 +173,7 @@ export function DayPanel({
                   onStatusChange={onStatusChange}
                   onDelete={onDelete}
                   onEdit={onEdit}
+                  onTogglePresente={onTogglePresente}
                   highlighted={a.id === highlightId}
                 />
               ))}

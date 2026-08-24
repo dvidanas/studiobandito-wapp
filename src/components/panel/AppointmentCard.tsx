@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { formatTime } from "@/lib/panelDates";
+import { formatTime, hoyArgentinaStr } from "@/lib/panelDates";
 import { STATUS_LABELS, STATUS_STYLES, type Appointment } from "./types";
 
 /**
@@ -20,12 +20,14 @@ export function AppointmentCard({
   onStatusChange,
   onDelete,
   onEdit,
+  onTogglePresente,
   highlighted = false,
 }: {
   appointment: Appointment;
   onStatusChange: (id: number, status: Appointment["status"]) => void;
   onDelete: (id: number) => void;
   onEdit: (appointment: Appointment) => void;
+  onTogglePresente: (id: number, presente: boolean) => void;
   /** Resalta la tarjeta y hace scroll hasta ella (lo usa el aviso de turno nuevo). */
   highlighted?: boolean;
 }) {
@@ -38,6 +40,10 @@ export function AppointmentCard({
   }, [highlighted]);
 
   const name = a.contact_name ?? a.contact_phone ?? "Sin nombre";
+  const presente = !!a.presente;
+  // Igual que en Pasta: solo tiene sentido marcar presente a alguien que tiene
+  // turno confirmado y es hoy. En otro día el botón sería un registro falso.
+  const mostrarBotonPresente = a.status === "confirmed" && a.date === hoyArgentinaStr();
   const accentColor = a.status === "pending" ? "#F59E0B" : a.status === "confirmed" ? "#2DD4BF" : "#EF4444";
 
   // Compute initials for the avatar
@@ -204,6 +210,23 @@ export function AppointmentCard({
       <div className="flex items-center justify-between md:justify-end border-t md:border-t-0 border-[var(--color-wa-sep)] pt-3.5 md:pt-0 mt-1 md:mt-0 gap-2.5">
         {/* Main Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          {mostrarBotonPresente && (
+            <button
+              onClick={() => onTogglePresente(a.id, !presente)}
+              className={`text-xs px-4 py-2 rounded-full font-semibold active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer ${
+                presente
+                  ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                  : "border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+              }`}
+              title={presente ? "Desmarcar presente" : "Marcar presente"}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              {presente ? "Presente" : "Marcar presente"}
+            </button>
+          )}
+
           {a.status === "pending" && (
             <button
               onClick={() => onStatusChange(a.id, "confirmed")}

@@ -55,6 +55,7 @@ export function TurnosToolbar({
   onStatusFilterChange,
   onIrAHoy,
   onIrAManana,
+  onIrAFinde,
 }: {
   total: number;
   confirmados: number;
@@ -66,6 +67,7 @@ export function TurnosToolbar({
   onStatusFilterChange: (v: "todos" | Appointment["status"]) => void;
   onIrAHoy: () => void;
   onIrAManana: () => void;
+  onIrAFinde: () => void;
 }) {
   return (
     <div className="flex-shrink-0 space-y-3">
@@ -156,6 +158,14 @@ export function TurnosToolbar({
             className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[var(--color-wa-hover)] text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-green)] hover:text-[var(--color-wa-green-text)] transition-all cursor-pointer active:scale-95"
           >
             Mañana
+          </button>
+          {/* En Bandito el finde es el sábado: el domingo está cerrado. */}
+          <button
+            onClick={onIrAFinde}
+            className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[var(--color-wa-hover)] text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-green)] hover:text-[var(--color-wa-green-text)] transition-all cursor-pointer active:scale-95"
+            title="Ir al próximo sábado"
+          >
+            Finde
           </button>
         </div>
 

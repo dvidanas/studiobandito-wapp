@@ -33,12 +33,14 @@ function ListaView({
   onStatusChange,
   onDelete,
   onEdit,
+  onTogglePresente,
 }: {
   appointments: Appointment[];
   loading: boolean;
   onStatusChange: (id: number, status: Appointment["status"]) => void;
   onDelete: (id: number) => void;
   onEdit: (appointment: Appointment) => void;
+  onTogglePresente: (id: number, presente: boolean) => void;
 }) {
   const grouped = useMemo(() => {
     const g: Record<string, Appointment[]> = {};
@@ -82,6 +84,7 @@ function ListaView({
                 onStatusChange={onStatusChange}
                 onDelete={onDelete}
                 onEdit={onEdit}
+                onTogglePresente={onTogglePresente}
               />
             ))}
           </div>
@@ -223,6 +226,29 @@ function AppointmentsView() {
     });
   }
 
+  /**
+   * Marca o desmarca que el cliente llegó. El endpoint alterna solo si no se le
+   * manda cuerpo, pero acá se manda el valor explícito: si el estado local y el
+   * de la base se desincronizan, un toggle a ciegas amplifica el error.
+   * La tarjeta se pinta al instante y se revierte si el PATCH falla.
+   */
+  async function togglePresente(id: number, presente: boolean) {
+    const previo = appointments;
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, presente: presente ? 1 : 0 } : a))
+    );
+    try {
+      const res = await fetch(`/api/appointments/${id}/presente`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presente }),
+      });
+      if (!res.ok) setAppointments(previo);
+    } catch {
+      setAppointments(previo);
+    }
+  }
+
   async function confirmDeleteAppointment() {
     if (!deleteId) return;
     const id = deleteId;
@@ -331,6 +357,17 @@ function AppointmentsView() {
     d.setDate(d.getDate() + 1);
     irA(d);
   };
+  /**
+   * "Finde" salta al próximo sábado. En Pasta el equivalente cae en domingo si
+   * hoy es domingo, pero acá el domingo está cerrado: mandar a la dueña a un día
+   * sin agenda no sirve de nada. Si hoy ya es sábado, se queda.
+   */
+  const irAFinde = () => {
+    const d = hoyArgentina();
+    const dia = d.getDay(); // 0 domingo … 6 sábado
+    d.setDate(d.getDate() + (dia === 0 ? 6 : 6 - dia));
+    irA(d);
+  };
 
   const calendarProps = {
     currentMonth,
@@ -349,6 +386,7 @@ function AppointmentsView() {
     onStatusChange: changeStatus,
     onDelete: setDeleteId,
     onEdit: openEditModal,
+    onTogglePresente: togglePresente,
     highlightId,
     searchQuery,
     statusFilter,
@@ -372,6 +410,7 @@ function AppointmentsView() {
               onStatusFilterChange={setStatusFilter}
               onIrAHoy={irAHoy}
               onIrAManana={irAManana}
+              onIrAFinde={irAFinde}
             />
           <div className="flex flex-1 overflow-hidden gap-3 min-h-0">
             {viewMode === "calendar" ? (
@@ -402,6 +441,7 @@ function AppointmentsView() {
                   onStatusChange={changeStatus}
                   onDelete={setDeleteId}
                   onEdit={openEditModal}
+                  onTogglePresente={togglePresente}
                 />
               </div>
             )}
@@ -422,6 +462,7 @@ function AppointmentsView() {
                 onStatusFilterChange={setStatusFilter}
                 onIrAHoy={irAHoy}
                 onIrAManana={irAManana}
+                onIrAFinde={irAFinde}
               />
             </div>
             <div className="flex-shrink-0 bg-[var(--color-wa-panel-l)] border-b border-[var(--color-wa-sep)]">
