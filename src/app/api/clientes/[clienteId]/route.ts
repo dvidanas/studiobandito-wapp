@@ -1,0 +1,25 @@
+import { NextResponse } from "next/server";
+import { getClienteById, getHistorialCliente, updateCliente } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(_req: Request, { params }: { params: Promise<{ clienteId: string }> }) {
+  const { clienteId } = await params;
+  const cliente = getClienteById(Number(clienteId));
+  if (!cliente) return NextResponse.json({ error: "No existe." }, { status: 404 });
+  return NextResponse.json({ cliente, historial: getHistorialCliente(Number(clienteId)) });
+}
+
+export async function PUT(req: Request, { params }: { params: Promise<{ clienteId: string }> }) {
+  const { clienteId } = await params;
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "Body inválido." }, { status: 400 });
+
+  updateCliente(Number(clienteId), {
+    ...(body.nombre !== undefined && { nombre: body.nombre.trim() }),
+    ...(body.telefono !== undefined && { telefono: body.telefono?.trim() || null }),
+    ...(body.email !== undefined && { email: body.email?.trim() || null }),
+    ...(body.notas !== undefined && { notas: body.notas?.trim() || null }),
+  });
+  return NextResponse.json({ ok: true });
+}

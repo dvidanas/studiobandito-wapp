@@ -1,0 +1,92 @@
+"use client";
+
+interface Conversation {
+  id: number;
+  phone: string;
+  jid?: string | null;
+  name: string | null;
+  mode: "AI" | "HUMAN";
+  has_lead: number;
+  last_message_at: number | null;
+  created_at: number;
+  last_message_content?: string | null;
+  last_message_role?: "user" | "assistant" | "human" | null;
+}
+
+interface Props {
+  conversations: Conversation[];
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+}
+
+function timeAgo(ts: number | null): string {
+  if (!ts) return "";
+  const diff = Math.floor(Date.now() / 1000) - ts;
+  if (diff < 60) return "ahora";
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
+  return `hace ${Math.floor(diff / 86400)} d`;
+}
+
+export function ConversationList({ conversations, selectedId, onSelect }: Props) {
+  if (conversations.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-16 px-4 text-center">
+        <p className="text-sm text-[var(--color-wa-text-sec)]">Sin conversaciones aún</p>
+      </div>
+    );
+  }
+
+  return (
+    <ul>
+      {conversations.map((c, index) => (
+        <li key={c.id} className="animate-in" style={{ animationDelay: `${index * 25}ms` }}>
+          <button
+            onClick={() => onSelect(c.id)}
+            className={`w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-[var(--color-wa-hover)] active:bg-[var(--color-wa-hover)] transition-colors border-b border-[var(--color-wa-sep)] min-h-[64px] ${
+              selectedId === c.id ? "bg-[var(--color-wa-hover)]" : ""
+            }`}
+          >
+            {/* Avatar Removed */}
+
+            {/* Info */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-base font-medium text-[var(--color-wa-text-main)] truncate">
+                  {c.name ?? (c.jid?.endsWith("@lid") ? "Contacto" : `+${c.phone}`)}
+                </span>
+                <span className="text-xs text-[var(--color-wa-text-sec)] flex-shrink-0">
+                  {timeAgo(c.last_message_at ?? c.created_at)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span
+                  className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border transition-colors ${
+                    c.mode === "AI"
+                      ? "bg-[var(--color-wa-green)]/10 text-[var(--color-wa-green)] border-[var(--color-wa-green)]/20"
+                      : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                  }`}
+                >
+                  {c.mode === "AI" ? "IA" : "HUMANO"}
+                </span>
+                {c.mode === "HUMAN" && c.last_message_role === "user" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-500 text-white border border-rose-600 animate-pulse">
+                    ESPERA HUMANA
+                  </span>
+                )}
+                {c.has_lead === 1 && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    LEAD
+                  </span>
+                )}
+                <span className="text-xs text-[var(--color-wa-text-sec)] truncate max-w-[180px]">
+                  {c.last_message_content || "Sin mensajes"}
+                </span>
+              </div>
+            </div>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}

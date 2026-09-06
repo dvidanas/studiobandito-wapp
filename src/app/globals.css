@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+/*
+  Paleta del panel — espejo de `panel.colores` en src/lib/client.config.ts.
+  Si cambia allá, cambia acá: CSS no puede leer el TS, así que los hex están
+  duplicados a propósito y ese archivo es la referencia.
+
+  Claro es el tema por defecto (`:root`). Oscuro entra con la clase `.dark`
+  en <html>, que pone el toggle del Sidebar y restaura el script inline de
+  layout.tsx antes del primer paint, para que no haya flash de tema.
+
+  Estos son los mismos valores que ya usaba el panel viejo de Bandito
+  (05_automatizacion_014/src/app/globals.css) — no los rojos de Corte. Sol ya
+  conoce esta paleta; cambiarla de golpe solo para portar el schema nuevo
+  sería un costo de adaptación sin ningún beneficio.
+*/
+
+@theme {
+  --color-wa-bg-main: var(--bg-main);
+  --color-wa-panel-l: var(--bg-panel-l);
+  --color-wa-panel-r: var(--bg-panel-r);
+  --color-wa-bubble-in: var(--bg-bubble-in);
+  --color-wa-bubble-out: var(--bg-bubble-out);
+  --color-wa-input: var(--bg-input);
+  --color-wa-header: var(--bg-header);
+  --color-wa-text-main: var(--text-main);
+  --color-wa-text-sec: var(--text-sec);
+  --color-wa-green: var(--wa-green);
+  --color-wa-green-dark: var(--wa-green-d);
+  --color-wa-green-text: var(--wa-green-text);
+  --color-wa-sep: var(--color-sep);
+  --color-wa-hover: var(--bg-hover);
+
+  --color-wa-bubble-out-text: var(--bubble-out-text);
+  --color-wa-bubble-in-text: var(--bubble-in-text);
+  --color-wa-time-out: var(--time-out);
+  --color-wa-time-in: var(--time-in);
+
+  /* Semánticos: los usan caja (ingreso/egreso) y los avisos. */
+  --color-wa-exito: var(--c-exito);
+  --color-wa-alerta: var(--c-alerta);
+  --color-wa-error: var(--c-error);
+
+  /*
+    Estados de una cita. Único lugar donde vive su color: lo consume
+    COLOR_ESTADO en components/panel/types.ts y de ahí toda la app.
+
+    'pendiente' es la extensión propia de Bandito (turnos migrados que nunca
+    se confirmaron — ver types.ts). Usa el mismo ámbar que el resto del
+    producto ya usa para "esperando decisión".
+  */
+  --color-estado-pendiente: var(--c-estado-pendiente);
+  --color-estado-confirmada: var(--c-estado-confirmada);
+  --color-estado-atendida: var(--c-exito);
+  --color-estado-cancelada: var(--c-estado-cancelada);
+
+  /* Overrides de Tailwind v4 para esquinas más redondeadas en toda la app */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+}
+
+/* ── Tema claro (por defecto) ── */
+:root {
+  --bg-main: #EFEFEF;
+  --bg-panel-l: #FFFFFF;
+  --bg-panel-r: #FFFFFF;
+  --bg-bubble-in: #E8E8E8;
+  --bg-bubble-out: #F5F5F5;
+  --bg-input: #F0F0F0;
+  --bg-header: #FFFFFF;
+  --text-main: #111111;
+  --text-sec: #888888;
+  --wa-green: #1A1A1A;
+  --wa-green-d: #000000;
+  --wa-green-text: #FFFFFF;
+  --color-sep: #DEDEDE;
+  --bg-hover: #E8E8E8;
+  --shadow-card: 0 2px 8px -1px rgba(0,0,0,0.08), 0 4px 16px -2px rgba(0,0,0,0.05);
+  --shadow-card-hover: 0 10px 28px -4px rgba(0,0,0,0.14), 0 6px 14px -4px rgba(0,0,0,0.08);
+
+  --c-exito: #16A34A;
+  --c-alerta: #D97706;
+  --c-error: #DC2626;
+
+  /* Mismo lenguaje de color que ya tenía el panel viejo: teal=confirmado,
+     ámbar=sin decidir, rojo=cancelado. */
+  --c-estado-pendiente: #D97706;
+  --c-estado-confirmada: #0D9488;
+  --c-estado-cancelada: #71717A;
+
+  --bubble-out-text: #111111;
+  --bubble-in-text: #111111;
+  --time-out: #888888;
+  --time-in: #888888;
+}
+
+/* ── Tema oscuro ── */
+.dark {
+  --bg-main: #0A0B0D;
+  --bg-panel-l: #121316;
+  --bg-panel-r: #121316;
+  --bg-bubble-in: #1A1C22;
+  --bg-bubble-out: #2E281C;
+  --bg-input: #1A1C22;
+  --bg-header: #121316;
+  --text-main: #F3F3F5;
+  --text-sec: #8D9099;
+  --wa-green: #D4B26F;
+  --wa-green-d: #BD9C59;
+  --wa-green-text: #090A0C;
+  --color-sep: #1C1E24;
+  --bg-hover: #1A1C23;
+  --shadow-card: 0 4px 12px -2px rgba(0,0,0,0.3), 0 2px 6px -1px rgba(0,0,0,0.2);
+  --shadow-card-hover: 0 12px 24px -4px rgba(0,0,0,0.4), 0 4px 12px -2px rgba(0,0,0,0.3);
+
+  --c-exito: #22C55E;
+  --c-alerta: #F59E0B;
+  --c-error: #EF4444;
+
+  --c-estado-pendiente: #F59E0B;
+  --c-estado-confirmada: #2DD4BF;
+  --c-estado-cancelada: #A1A1AA;
+
+  --bubble-out-text: #F3F3F5;
+  --bubble-in-text: #F3F3F5;
+  --time-out: #8D9099;
+  --time-in: #8D9099;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.2s, color 0.2s;
+  overflow: hidden;
+}
+
+/* Bandito no usa una serif de marca: ver la nota en layout.tsx. Esta clase
+   queda definida (varios componentes heredados de Corte la usan para
+   títulos de sección) pero apunta a la misma sans, sin efecto visual. */
+.font-display {
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fadeInUp 0.2s ease-out both;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.97) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-modal {
+  animation: modalIn 0.15s ease-out both;
+}
+
+/* Tabular numbers para columnas de plata: los montos quedan alineados. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}

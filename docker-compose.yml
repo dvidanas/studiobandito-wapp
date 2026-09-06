@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        CACHEBUST: ${CACHEBUST:-1}
+    ports:
+      - "3099:3099"
+    volumes:
+      # Convención estándar: SQLite y backups en el volumen /data.
+      - corteingles_data:/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  corteingles_data:

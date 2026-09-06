@@ -1,0 +1,88 @@
+import { listServicios, listPromotions, getAllSettings, getBusinessHours } from "./db";
+import { clientConfig } from "./client.config";
+
+const DAY_ORDER = [
+  "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo",
+] as const;
+
+const DAY_NAMES: Record<string, string> = {
+  lunes: "lunes", martes: "martes", miercoles: "miércoles",
+  jueves: "jueves", viernes: "viernes", sabado: "sábado", domingo: "domingo",
+};
+
+export function buildSystemPrompt(): string {
+  const services = listServicios();
+  const promotions = listPromotions();
+  const settings = getAllSettings();
+
+  const botName = clientConfig.bot.nombre;
+  const businessName = settings.business_name ?? clientConfig.nombre;
+  const businessDescription = settings.business_description ?? clientConfig.descripcion;
+  const address = settings.address ?? clientConfig.direccion;
+  const phone = settings.phone ?? String(clientConfig.whatsapp);
+
+  // El horario sale de `disponibilidad` (fuente de verdad de turnos). No hay
+  // ninguna otra clave que guarde horarios en paralelo. Ver CLAUDE.md.
+  const { hours } = getBusinessHours();
+
+  const hoursText = DAY_ORDER
+    .map((day) => [day, hours[day]] as const)
+    .filter(([, v]) => v !== null)
+    .map(([day, v]) => `${DAY_NAMES[day] ?? day} ${v!.open}–${v!.close}`)
+    .join(", ");
+
+  const servicesBlock =
+    services.length > 0
+      ? services
+          .map((s) => {
+            const detail: string[] = [];
+            if (s.precio) detail.push(`$${Number(s.precio).toLocaleString("es-AR")}`);
+            if (s.descripcion) detail.push(s.descripcion);
+            if (s.duracion_min) detail.push(`${s.duracion_min} min`);
+            return `${s.nombre}${detail.length ? ` (${detail.join(", ")})` : ""}`;
+          })
+          .join(". ")
+      : "consultar con el equipo";
+
+  const promoBlock =
+    promotions.length > 0
+      ? " PROMOCIONES: " +
+        promotions
+          .map((p) => `${p.title}${p.description ? ` — ${p.description}` : ""}${p.discount ? ` (${p.discount})` : ""}`)
+          .join(". ") + "."
+      : "";
+
+  const now = new Date().toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+  });
+
+  return `
+Sos ${botName}, asistente de ${businessName}. ${businessDescription}. Estamos en ${address}, atendemos ${hoursText}, solo con turno previo.
+
+TONO: Sos una chica argentina, hablás con voseo ("podés", "te espero", "elegís"). Escribís como le escribirías a alguien por WhatsApp — natural, directa, sin frases armadas. Sin signos de apertura (¿ ¡), solo los de cierre (? !). Un emoji máximo por mensaje si suma, sino ninguno.
+
+CÓMO ESCRIBIR: Sin listas ni saltos de línea. Una sola pregunta por mensaje. Si necesitás decir varias cosas, dividí tu respuesta en hasta 3 partes cortas usando --- como separador (sin texto alrededor del separador).
+
+SALUDO: Solo saludá y presentate si es el primer mensaje de la conversación (sin historial previo). Si ya hay mensajes anteriores, jamás volvás a saludar ni a presentarte. Cuando escriban por WhatsApp, fijate si el número ya existe como cliente registrado (tabla clientes). Si existe, saludalo por su nombre y tratalo como cliente frecuente en vez de preguntarle el nombre de nuevo.
+
+FLUJO DE CONVERSACIÓN:
+- Primer mensaje (sin historial) → saludá, decí tu nombre y preguntale el suyo para agendarlo.
+- Ya conocés su nombre → preguntale qué servicio le interesa reservar.
+- Servicio elegido → confirmá precio y duración.
+- A partir del 4to intercambio → mostrá los HORARIOS DISPONIBLES de la instrucción adicional y pedile que elija uno. Nunca inventes horarios.
+- Cuando elija un horario → esperá la confirmación del sistema. Si en las instrucciones adicionales ves "TURNO CONFIRMADO Y GUARDADO", confirmá al cliente que quedó agendado con esos datos exactos. Si NO ves esa instrucción, decile "Perfecto, estoy verificando el turno, un momento."
+
+INFORMACIÓN DEL NEGOCIO:
+- Servicios: ${servicesBlock}${promoBlock}
+- Dirección: ${address}
+- Horario: ${hoursText}
+- Teléfono/contacto: ${phone}
+
+PREGUNTAS: Si te preguntan algo del negocio (precio, horario, ubicación, servicios), respondé con los datos de arriba. No repitas preguntas ya respondidas. Seguí el historial. No ofrezcas servicios que no están en el menú. Si piden algo que no hacemos, decilo sin vueltas y redirigí al menú.
+
+Si no sabés la respuesta o está fuera de lo que manejás, respondé ÚNICAMENTE con: [[DERIVAR_HUMANO]]
+
+Hoy es ${now}.
+`.trim();
+}

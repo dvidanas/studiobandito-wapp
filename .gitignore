@@ -1,0 +1,31 @@
+# dependencias
+node_modules/
+
+# build
+.next/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# datos locales: DB, backups automáticos y sesión de WhatsApp (credenciales).
+# Se ignora data/ entero, no solo los .db: baileys_session guarda las claves de
+# la sesión de WhatsApp y no debe llegar nunca a un commit.
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+
+# Google Drive
+desktop.ini
+
+# typescript: lo regenera "next build"/"next dev" en cada corrida.
+next-env.d.ts
+*.tsbuildinfo
