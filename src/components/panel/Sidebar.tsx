@@ -5,15 +5,22 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clientConfig } from "@/lib/client.config";
 
-// Portado del patrón del panel de Pasta Lovers, sin el filtrado por roles:
-// Bandito tiene un único login por PIN, así que todas las secciones listadas
-// son visibles siempre.
+// Un único login por PIN, así que todas las secciones listadas son visibles
+// siempre.
 //
 // Fuera del nav a propósito, pero vivas y accesibles por URL directa:
-//  - /messages  el bot de WhatsApp no está activo; la página, sus componentes y
-//               sus rutas API quedan intactos por si vuelve.
-//  - /staff     se llega desde Config → Personal, no se duplica acá.
-//  - /leads     fuera del alcance de esta migración.
+//  - /messages    el bot de WhatsApp no está activo; la página, sus
+//                 componentes y sus rutas API quedan intactos por si se
+//                 reactiva alguna vez.
+//  - /staff       se llega desde Config → Personal, no se duplica acá.
+//  - /leads       heredada de Bandito, fuera del alcance de esta migración.
+//  - /comisiones  el schema ya soporta multi-profesional, pero hoy Sol es la
+//                 única activa: una pantalla de "cuánto cobra cada uno" no
+//                 aporta nada mientras sea una sola persona cobrando el 100%
+//                 de su propio trabajo. Vuelve al nav el día que sume
+//                 personal — la página y la API quedan intactas, no hay nada
+//                 que reconstruir. (Sucursales no tiene pantalla propia en
+//                 este panel, solo API — nada que ocultar ahí.)
 
 interface Tab {
   href: string;
@@ -32,11 +39,29 @@ const TABS: Tab[] = [
     ),
   },
   {
-    href: "/clients",
+    href: "/clientes",
     label: "Clientes",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/caja",
+    label: "Caja",
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    ),
+  },
+  {
+    href: "/descuentos",
+    label: "Descuentos",
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
       </svg>
     ),
   },
@@ -96,12 +121,12 @@ export function Sidebar() {
   const marca = (onNavigate?: () => void) => (
     <div className="flex flex-col gap-1.5 min-w-0">
       <Link href="/" className="block" onClick={onNavigate}>
-        <span className="text-base font-bold text-[var(--color-wa-text-main)] truncate">
-          {clientConfig.businessName}
+        <span className="font-display text-lg font-semibold text-[var(--color-wa-text-main)] truncate">
+          {clientConfig.nombre}
         </span>
       </Link>
       <span className="text-[10px] text-[var(--color-wa-text-sec)] font-semibold tracking-wider uppercase">
-        Panel de gestión
+        {clientConfig.vistaPrevia ? "Vista previa · Panel de gestión" : "Panel de gestión"}
       </span>
     </div>
   );
@@ -115,14 +140,14 @@ export function Sidebar() {
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold flex items-center gap-3 transition-all duration-200 ${
+            className={`rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold flex items-center gap-2.5 transition-all duration-200 ${
               activo
                 ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)] shadow-sm"
                 : "text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)] hover:text-[var(--color-wa-text-main)]"
             }`}
           >
             {item.icon}
-            <span>{item.label}</span>
+            <span className="truncate">{item.label}</span>
           </Link>
         );
       })}
@@ -153,11 +178,11 @@ export function Sidebar() {
       <div className="border-t border-[var(--color-wa-sep)] pt-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-8 h-8 rounded-full bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)] flex items-center justify-center font-bold text-xs shrink-0">
-            {clientConfig.businessName.charAt(0).toUpperCase()}
+            {clientConfig.nombre.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[var(--color-wa-text-main)] truncate leading-none mb-0.5">
-              {clientConfig.businessName}
+              {clientConfig.nombre}
             </p>
             <p className="text-[11px] text-[var(--color-wa-text-sec)] leading-none">Administración</p>
           </div>
@@ -175,6 +200,8 @@ export function Sidebar() {
   return (
     <>
       {/* Sidebar de escritorio */}
+      {/* 240 / px-6 / py-8 / gap-8: las mismas medidas que el sidebar de
+          Studio Bandito, que es la referencia de proporciones. */}
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-[240px] bg-[var(--color-wa-panel-l)] border-r border-[var(--color-wa-sep)] px-6 py-8 gap-8 z-30">
         {marca()}
         <div className="flex-1">{renderLinks()}</div>

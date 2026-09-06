@@ -77,3 +77,70 @@ export function getMonthBounds(date: Date): { from: string; to: string } {
     to: dateToStr(new Date(y, m + 1, 0)),
   };
 }
+
+// ── Rangos ────────────────────────────────────────────────────────────────
+// Los usan Métricas, Caja y Comisiones. Estaban escritos en Métricas y se
+// sacaron acá cuando aparecieron el segundo y el tercer uso.
+
+/** Suma días a un "YYYY-MM-DD" sin pasar por el reloj local. */
+export function sumarDias(iso: string, n: number): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Días entre dos fechas, ambas incluidas. */
+export function diasEntre(desde: string, hasta: string): number {
+  return Math.round(
+    (Date.parse(`${hasta}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`)) / 86400000
+  ) + 1;
+}
+
+export type PresetRango = "dia" | "semana" | "mes" | "custom";
+
+export interface Rango { desde: string; hasta: string }
+
+/**
+ * La semana arranca el LUNES, en las tres pantallas. Es la convención local y
+ * lo que espera alguien que cobra por semana.
+ *
+ * `ancla` es el día de referencia: en Métricas es siempre hoy, en Caja y
+ * Comisiones es el día que el usuario está mirando, para que las flechas
+ * puedan moverse a la semana o al mes anterior.
+ */
+export function rangoDePreset(preset: PresetRango, ancla: string): Rango {
+  if (preset === "dia") return { desde: ancla, hasta: ancla };
+  if (preset === "semana") {
+    const dow = new Date(`${ancla}T12:00:00Z`).getUTCDay(); // 0 = domingo
+    const alLunes = dow === 0 ? 6 : dow - 1;
+    const lunes = sumarDias(ancla, -alLunes);
+    return { desde: lunes, hasta: sumarDias(lunes, 6) };
+  }
+  if (preset === "mes") {
+    const primero = `${ancla.slice(0, 7)}-01`;
+    const d = new Date(`${primero}T12:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    d.setUTCDate(0);
+    return { desde: primero, hasta: d.toISOString().slice(0, 10) };
+  }
+  return { desde: ancla, hasta: ancla };
+}
+
+/** Mueve el rango un período entero para adelante o para atrás. */
+export function moverRango(preset: PresetRango, ancla: string, pasos: number): string {
+  if (preset === "dia") return sumarDias(ancla, pasos);
+  if (preset === "semana") return sumarDias(ancla, pasos * 7);
+  if (preset === "mes") {
+    const d = new Date(`${ancla.slice(0, 7)}-01T12:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() + pasos);
+    return d.toISOString().slice(0, 10);
+  }
+  return ancla;
+}
+
+/** La ventana inmediatamente anterior, del mismo largo. */
+export function rangoAnterior(desde: string, hasta: string): Rango {
+  const dias = diasEntre(desde, hasta);
+  const antHasta = sumarDias(desde, -1);
+  return { desde: sumarDias(antHasta, -(dias - 1)), hasta: antHasta };
+}

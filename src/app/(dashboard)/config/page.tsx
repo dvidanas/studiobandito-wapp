@@ -1,10 +1,29 @@
 "use client";
+import Link from "next/link";
+import { plata } from "@/lib/format";
 import { useState, useEffect, useCallback } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { HorariosPanel } from "@/components/panel/HorariosPanel";
 
 // ── Style constants ──────────────────────────────────────────────────────────
 const INPUT =
   "w-full bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-2.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] focus:ring-2 focus:ring-[var(--color-wa-green)]/20 transition-colors";
+/** Entrada del menú de Config. La usan el botón de sección y el link a /staff:
+    tienen que verse igual, porque para el que mira son la misma lista. */
+const claseNav = (activa: boolean) =>
+  `flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors w-full ${
+    activa
+      ? "bg-[var(--color-wa-hover)] text-[var(--color-wa-text-main)] font-semibold"
+      : "text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)] hover:text-[var(--color-wa-text-main)]"
+  }`;
+
+const clasePastilla = (activa: boolean) =>
+  `flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+    activa
+      ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)]"
+      : "bg-[var(--color-wa-panel-l)] border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"
+  }`;
+
 const BTN_PRIMARY =
   "px-5 py-2.5 bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)] text-sm font-semibold rounded-xl hover:bg-[var(--color-wa-green-dark)] active:scale-95 disabled:opacity-50 transition-all duration-150";
 const BTN_GHOST =
@@ -22,11 +41,11 @@ interface BusinessInfo {
 }
 interface Service {
   id: number;
-  name: string;
-  description: string | null;
-  price: string | null;
-  duration_minutes: number;
-  active: number;
+  nombre: string;
+  descripcion: string | null;
+  precio: number;
+  duracion_min: number;
+  activo: number;
 }
 interface Promotion {
   id: number;
@@ -36,9 +55,24 @@ interface Promotion {
   active: number;
 }
 
-type Section = "negocio" | "servicios" | "promociones" | "horarios" | "cerrados" | "personal" | "backup";
+type Section = "negocio" | "servicios" | "promociones" | "horarios" | "backup";
 
-const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
+/**
+ * Una entrada del menú de Config es una de dos cosas: una sección que se pinta
+ * en el panel derecho (`id`), o un link a una pantalla propia (`href`).
+ *
+ * Personal es lo segundo. Antes era una sección con una descripción y un botón
+ * "Abrir Personal", así que llegar a la lista de profesionales costaba dos
+ * clicks para ver una pantalla que no decía nada que no se supiera.
+ */
+interface EntradaNav {
+  label: string;
+  icon: React.ReactNode;
+  id?: Section;
+  href?: string;
+}
+
+const SECTIONS: EntradaNav[] = [
   {
     id: "negocio",
     label: "Negocio",
@@ -76,16 +110,7 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
     ),
   },
   {
-    id: "cerrados",
-    label: "Días cerrados",
-    icon: (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-      </svg>
-    ),
-  },
-  {
-    id: "personal",
+    href: "/staff",
     label: "Personal",
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -104,10 +129,10 @@ const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
   },
 ];
 
-const DAYS_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const DAYS_ORDER = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
 const DAYS_ES: Record<string, string> = {
-  monday: "Lunes", tuesday: "Martes", wednesday: "Miércoles",
-  thursday: "Jueves", friday: "Viernes", saturday: "Sábado", sunday: "Domingo",
+  lunes: "Lunes", martes: "Martes", miercoles: "Miércoles",
+  jueves: "Jueves", viernes: "Viernes", sabado: "Sábado", domingo: "Domingo",
 };
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -186,7 +211,7 @@ function SectionNegocio({ onSaved }: { onSaved: () => void }) {
 }
 
 // ── Section: Servicios ───────────────────────────────────────────────────────
-const EMPTY_SVC = { name: "", description: "", price: "", duration_minutes: 40 };
+const EMPTY_SVC = { nombre: "", descripcion: "", precio: "", duracion_min: 30 };
 
 function SectionServicios({ onSaved }: { onSaved: () => void }) {
   const [services, setServices] = useState<Service[]>([]);
@@ -195,15 +220,21 @@ function SectionServicios({ onSaved }: { onSaved: () => void }) {
   const [form, setForm] = useState(EMPTY_SVC);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
+  const [error, setError] = useState("");
 
   const load = useCallback(() => {
-    fetch("/api/settings/services").then((r) => r.json()).then((d) => { setServices(d); setLoading(false); });
+    fetch("/api/settings/servicios?todos=1").then((r) => r.json()).then((d) => { setServices(d); setLoading(false); });
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const startEdit = (svc: Service) => {
-    setForm({ name: svc.name, description: svc.description ?? "", price: svc.price ?? "", duration_minutes: svc.duration_minutes });
+    setForm({
+      nombre: svc.nombre,
+      descripcion: svc.descripcion ?? "",
+      precio: String(svc.precio),
+      duracion_min: svc.duracion_min,
+    });
     setEditing(svc.id);
   };
 
@@ -211,14 +242,25 @@ function SectionServicios({ onSaved }: { onSaved: () => void }) {
   const cancel = () => setEditing(null);
 
   const save = async () => {
-    if (!form.name.trim()) return;
+    if (!form.nombre.trim()) return;
     setSaving(true);
-    if (editing === "new") {
-      await fetch("/api/settings/services", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    } else {
-      await fetch(`/api/settings/services/${editing}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    }
+    setError("");
+    const cuerpo = {
+      nombre: form.nombre.trim(),
+      descripcion: form.descripcion.trim() || null,
+      precio: Number(form.precio) || 0,
+      duracion_min: Number(form.duracion_min),
+    };
+    const res =
+      editing === "new"
+        ? await fetch("/api/settings/servicios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) })
+        : await fetch(`/api/settings/servicios/${editing}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
     setSaving(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setError(d.error ?? "No se pudo guardar el servicio.");
+      return;
+    }
     setEditing(null);
     load();
     onSaved();
@@ -226,7 +268,11 @@ function SectionServicios({ onSaved }: { onSaved: () => void }) {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    await fetch(`/api/settings/services/${deleteTarget.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/settings/servicios/${deleteTarget.id}`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
+    // Con citas asociadas el backend desactiva en vez de borrar: borrarlo
+    // dejaría esas citas sin servicio y rompería el histórico de caja.
+    if (d.aviso) setError(d.aviso);
     setDeleteTarget(null);
     load();
   };
@@ -242,10 +288,13 @@ function SectionServicios({ onSaved }: { onSaved: () => void }) {
           ) : (
             <div key={svc.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)]">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--color-wa-text-main)] truncate">{svc.name}</p>
+                <p className={`text-sm font-medium truncate ${svc.activo ? "text-[var(--color-wa-text-main)]" : "text-[var(--color-wa-text-sec)] line-through"}`}>
+                  {svc.nombre}
+                </p>
                 <p className="text-xs text-[var(--color-wa-text-sec)] mt-0.5">
-                  {svc.price ? `$${Number(svc.price).toLocaleString("es-AR")}` : "Sin precio"} · {svc.duration_minutes} min
-                  {svc.description ? ` · ${svc.description}` : ""}
+                  {plata(svc.precio)} · {svc.duracion_min} min
+                  {svc.descripcion ? ` · ${svc.descripcion}` : ""}
+                  {svc.activo ? "" : " · inactivo"}
                 </p>
               </div>
               <button onClick={() => startEdit(svc)} className="p-1.5 rounded-lg text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)] transition-colors">
@@ -267,9 +316,12 @@ function SectionServicios({ onSaved }: { onSaved: () => void }) {
           </button>
         )}
       </div>
+      {error && (
+        <p className="mt-3 text-sm" style={{ color: "var(--color-wa-error)" }}>{error}</p>
+      )}
       {deleteTarget && (
         <ConfirmDialog
-          message={`¿Eliminar "${deleteTarget.name}"?`}
+          message={`¿Eliminar "${deleteTarget.nombre}"? Si ya tiene citas asociadas se desactiva en lugar de borrarse.`}
           onConfirm={confirmDelete}
           onCancel={() => setDeleteTarget(null)}
         />
@@ -290,19 +342,21 @@ function ServiceForm({ form, setForm, saving, onSave, onCancel }: {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="sm:col-span-3">
           <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Nombre *</label>
-          <input className={INPUT} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Corte de cabello" />
+          <input className={INPUT} value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Corte clásico" />
         </div>
         <div>
           <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Precio ($)</label>
-          <input className={INPUT} type="number" value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} placeholder="17000" />
+          <input className={INPUT} type="number" value={form.precio} onChange={(e) => setForm((p) => ({ ...p, precio: e.target.value }))} placeholder="6000" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Duración (min)</label>
-          <input className={INPUT} type="number" value={form.duration_minutes} onChange={(e) => setForm((p) => ({ ...p, duration_minutes: Number(e.target.value) }))} placeholder="40" />
+          {/* La duración define la grilla de turnos de este servicio, no es
+              informativa: un color de 90 min genera slots de 90 min. */}
+          <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Duración (min) *</label>
+          <input className={INPUT} type="number" value={form.duracion_min} onChange={(e) => setForm((p) => ({ ...p, duracion_min: Number(e.target.value) }))} placeholder="30" />
         </div>
         <div>
           <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Descripción</label>
-          <input className={INPUT} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Incluye productos" />
+          <input className={INPUT} value={form.descripcion} onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))} placeholder="Incluye productos" />
         </div>
       </div>
       <div className="flex gap-2 justify-end">
@@ -436,472 +490,6 @@ function PromoForm({ form, setForm, saving, onSave, onCancel }: {
         <button className={BTN_GHOST} onClick={onCancel}>Cancelar</button>
         <button className={BTN_PRIMARY} onClick={onSave} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
       </div>
-    </div>
-  );
-}
-
-// ── Section: Horarios ────────────────────────────────────────────────────────
-// Esta sección edita availability_slots (la misma tabla que Personal →
-// Disponibilidad semanal), NO una configuración de horarios aparte. Con una sola
-// persona activa, el horario del negocio ES su disponibilidad. Con varias, pasa
-// a modo lectura mostrando la envolvente. Ver CLAUDE.md.
-function SectionHorarios({ onSaved }: { onSaved: () => void }) {
-  const [hours, setHours] = useState<Record<string, { open: string; close: string } | null>>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [editable, setEditable] = useState(true);
-  const [resourceCount, setResourceCount] = useState(1);
-  const [collapsedDays, setCollapsedDays] = useState<string[]>([]);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch("/api/settings/business")
-      .then((r) => r.json())
-      .then((d) => {
-        setHours(d.hours ?? {});
-        setEditable(d.hours_editable ?? true);
-        setResourceCount(d.hours_resource_count ?? 1);
-        setCollapsedDays(d.hours_collapsed_days ?? []);
-        setLoading(false);
-      });
-  }, []);
-
-  const toggle = (day: string) => {
-    setHours((prev) => ({
-      ...prev,
-      [day]: prev[day] ? null : { open: "10:00", close: "20:00" },
-    }));
-  };
-
-  const updateTime = (day: string, field: "open" | "close", val: string) => {
-    setHours((prev) => ({
-      ...prev,
-      [day]: { ...(prev[day] as { open: string; close: string }), [field]: val },
-    }));
-  };
-
-  const save = async () => {
-    setSaving(true);
-    setError("");
-    const res = await fetch("/api/settings/business", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hours }),
-    });
-    setSaving(false);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "No se pudo guardar el horario.");
-      if (res.status === 409) setEditable(false);
-      return;
-    }
-    onSaved();
-  };
-
-  if (loading) return <div className="h-60 animate-pulse bg-[var(--color-wa-hover)] rounded-2xl" />;
-
-  return (
-    <Card title="Horarios de atención">
-      {!editable && (
-        <div className="mb-4 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-sm text-amber-900 dark:text-amber-200">
-          {resourceCount === 0 ? (
-            <>No hay personal activo. Creá al menos una persona en <strong>Personal</strong> para poder cargar horarios.</>
-          ) : (
-            <>Hay <strong>{resourceCount} personas</strong> cargadas. Acá se muestra el horario general del local (de la primera apertura al último cierre). Para cambiarlo, editá el horario de cada persona en <strong>Personal → Disponibilidad semanal</strong>.</>
-          )}
-        </div>
-      )}
-      {editable && collapsedDays.length > 0 && (
-        <div className="mb-4 px-4 py-3 rounded-xl border border-amber-300 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 text-sm text-amber-900 dark:text-amber-200">
-          Hay más de un tramo horario cargado en: <strong>{collapsedDays.map((d) => DAYS_ES[d] ?? d).join(", ")}</strong>. Acá se muestra unificado; si guardás, queda un solo tramo por día.
-        </div>
-      )}
-      <div className="flex flex-col gap-2">
-        {DAYS_ORDER.map((day) => {
-          const slot = hours[day];
-          const isOpen = slot !== null && slot !== undefined;
-          return (
-            <div key={day} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 rounded-xl border transition-colors border-[var(--color-wa-sep)] ${isOpen ? "bg-[var(--color-wa-bg-main)]" : "bg-transparent"}`}>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => toggle(day)}
-                  disabled={!editable}
-                  className={`relative rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${isOpen ? "bg-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)]"}`}
-                  style={{ height: "22px", width: "40px" }}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 bg-white rounded-full shadow transition-transform ${isOpen ? "translate-x-[18px]" : ""}`}
-                    style={{ width: "18px", height: "18px" }}
-                  />
-                </button>
-                <span className={`w-24 text-sm font-medium flex-shrink-0 ${isOpen ? "text-[var(--color-wa-text-main)]" : "text-[var(--color-wa-text-sec)]"}`}>
-                  {DAYS_ES[day]}
-                </span>
-                {!isOpen && <span className="text-xs text-[var(--color-wa-text-sec)]">Cerrado</span>}
-              </div>
-              {isOpen && (
-                <div className="flex items-center gap-2 flex-1 pl-[52px] sm:pl-0">
-                  <input
-                    type="time"
-                    className="flex-1 sm:flex-none sm:w-32 bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-2 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] focus:ring-2 focus:ring-[var(--color-wa-green)]/20 transition-colors"
-                    value={(slot as { open: string; close: string }).open}
-                    disabled={!editable}
-                    onChange={(e) => updateTime(day, "open", e.target.value)}
-                  />
-                  <span className="text-[var(--color-wa-text-sec)] text-sm flex-shrink-0">a</span>
-                  <input
-                    type="time"
-                    className="flex-1 sm:flex-none sm:w-32 bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-2 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] focus:ring-2 focus:ring-[var(--color-wa-green)]/20 transition-colors"
-                    value={(slot as { open: string; close: string }).close}
-                    disabled={!editable}
-                    onChange={(e) => updateTime(day, "close", e.target.value)}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {error && (
-        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
-      )}
-      {editable && (
-        <div className="mt-5 flex justify-end">
-          <button className={BTN_PRIMARY} onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-// ── Section: Días cerrados ───────────────────────────────────────────────────
-function SectionCerrados({ onSaved }: { onSaved: () => void }) {
-  const [dates, setDates] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newDate, setNewDate] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    fetch("/api/settings/closed-dates").then((r) => r.json()).then((d) => { setDates(d); setLoading(false); });
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const addDate = async () => {
-    if (!newDate) return;
-    setAdding(true);
-    await fetch("/api/settings/closed-dates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: newDate }),
-    });
-    setNewDate("");
-    setAdding(false);
-    load();
-    onSaved();
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    await fetch(`/api/settings/closed-dates/${deleteTarget}`, { method: "DELETE" });
-    setDeleteTarget(null);
-    load();
-  };
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso + "T12:00:00");
-    return d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  };
-
-  if (loading) return <div className="h-32 animate-pulse bg-[var(--color-wa-hover)] rounded-2xl" />;
-
-  return (
-    <Card title="Días cerrados">
-      <p className="text-xs text-[var(--color-wa-text-sec)] mb-4">Fechas especiales en las que el negocio no atiende (feriados, vacaciones, etc.).</p>
-      <div className="flex gap-2 mb-4">
-        <input
-          type="date"
-          className={INPUT}
-          value={newDate}
-          min={new Date().toISOString().slice(0, 10)}
-          onChange={(e) => setNewDate(e.target.value)}
-        />
-        <button className={BTN_PRIMARY + " whitespace-nowrap"} onClick={addDate} disabled={adding || !newDate}>
-          {adding ? "…" : "Agregar"}
-        </button>
-      </div>
-      <div className="flex flex-col gap-2">
-        {dates.length === 0 && (
-          <p className="text-sm text-[var(--color-wa-text-sec)] py-2">No hay días cerrados registrados.</p>
-        )}
-        {dates.map((date) => (
-          <div key={date} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)]">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-[var(--color-wa-text-main)] capitalize">{formatDate(date)}</p>
-            </div>
-            <button onClick={() => setDeleteTarget(date)} className={BTN_DANGER}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </button>
-          </div>
-        ))}
-      </div>
-      {deleteTarget && (
-        <ConfirmDialog
-          message={`¿Eliminar el día cerrado ${formatDate(deleteTarget)}?`}
-          onConfirm={confirmDelete}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
-    </Card>
-  );
-}
-
-// ── Section: Personal ────────────────────────────────────────────────────────
-interface Resource {
-  id: number;
-  name: string;
-  phone: string | null;
-  active: number;
-}
-interface AvailSlot {
-  id: number;
-  resource_id: number;
-  day_of_week: number;
-  time_start: string;
-  time_end: string;
-}
-const WEEK_DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const WEEK_DAYS_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-
-function SectionPersonal() {
-  const [staff, setStaff] = useState<Resource[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [addingNew, setAddingNew] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [savingInfo, setSavingInfo] = useState(false);
-  const [availability, setAvailability] = useState<AvailSlot[]>([]);
-  const [savingAvail, setSavingAvail] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const loadStaff = useCallback(() =>
-    fetch("/api/settings/resources").then((r) => r.json()).then(setStaff), []);
-
-  useEffect(() => { loadStaff(); }, [loadStaff]);
-
-  const loadAvailability = useCallback(async (id: number) => {
-    const slots: AvailSlot[] = await fetch(`/api/settings/resources/${id}`).then((r) => r.json());
-    setAvailability(slots);
-  }, []);
-
-  const selectStaff = (r: Resource) => {
-    setSelectedId(r.id);
-    setEditName(r.name);
-    setEditPhone(r.phone ?? "");
-    setAddingNew(false);
-    loadAvailability(r.id);
-  };
-
-  const createStaff = async () => {
-    if (!newName.trim()) return;
-    setCreating(true);
-    const res = await fetch("/api/settings/resources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim(), phone: newPhone.trim() || null }),
-    });
-    const { id } = await res.json();
-    setCreating(false);
-    setNewName(""); setNewPhone(""); setAddingNew(false);
-    await loadStaff();
-    const all: Resource[] = await fetch("/api/settings/resources").then((r) => r.json());
-    const created = all.find((r) => r.id === id);
-    if (created) selectStaff(created);
-  };
-
-  const saveInfo = async () => {
-    if (!selectedId || !editName.trim()) return;
-    setSavingInfo(true);
-    await fetch(`/api/settings/resources/${selectedId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editName.trim(), phone: editPhone.trim() || null }),
-    });
-    setSavingInfo(false);
-    loadStaff();
-  };
-
-  const toggleActive = async (r: Resource) => {
-    await fetch(`/api/settings/resources/${r.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ active: r.active ? 0 : 1 }),
-    });
-    loadStaff();
-  };
-
-  const confirmDeleteStaff = async () => {
-    if (!deleteTarget) return;
-    const res = await fetch(`/api/settings/resources/${deleteTarget.id}`, { method: "DELETE" });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setDeleteError(data.error ?? "No se pudo eliminar. Puede tener turnos activos.");
-      setDeleteTarget(null);
-      return;
-    }
-    if (selectedId === deleteTarget.id) { setSelectedId(null); setAvailability([]); }
-    setDeleteTarget(null);
-    loadStaff();
-  };
-
-  const toggleDay = (day: number) => {
-    if (!selectedId) return;
-    const exists = availability.some((s) => s.day_of_week === day);
-    setAvailability((prev) =>
-      exists
-        ? prev.filter((s) => s.day_of_week !== day)
-        : [...prev, { id: 0, resource_id: selectedId, day_of_week: day, time_start: "09:00", time_end: "18:00" }]
-    );
-  };
-
-  const updateAvailTime = (day: number, field: "time_start" | "time_end", val: string) => {
-    setAvailability((prev) => prev.map((s) => s.day_of_week === day ? { ...s, [field]: val } : s));
-  };
-
-  const saveAvailability = async () => {
-    if (!selectedId) return;
-    setSavingAvail(true);
-    await fetch(`/api/settings/resources/${selectedId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ availability: availability.map(({ day_of_week, time_start, time_end }) => ({ day_of_week, time_start, time_end })) }),
-    });
-    setSavingAvail(false);
-  };
-
-  const selected = staff.find((r) => r.id === selectedId) ?? null;
-
-  return (
-    <div className="flex gap-4 h-full min-h-[400px]">
-      {/* Staff list */}
-      <Card title="Integrantes">
-        <div className="flex flex-col gap-2 min-w-[180px]">
-          {staff.length === 0 && !addingNew && (
-            <p className="text-sm text-[var(--color-wa-text-sec)] py-1">Sin personal aún.</p>
-          )}
-          {staff.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => selectStaff(r)}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors w-full ${selectedId === r.id ? "bg-[var(--color-wa-green)]/10 text-[var(--color-wa-text-main)]" : "hover:bg-[var(--color-wa-hover)] text-[var(--color-wa-text-sec)]"} ${!r.active ? "opacity-50" : ""}`}
-            >
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${r.active ? "bg-[var(--color-wa-green)]/15 text-[var(--color-wa-green)]" : "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"}`}>
-                {r.name.charAt(0).toUpperCase()}
-              </div>
-              <span className={`text-sm font-medium truncate ${!r.active ? "line-through" : ""}`}>{r.name}</span>
-            </button>
-          ))}
-          {addingNew && (
-            <div className="flex flex-col gap-2 mt-1 p-3 rounded-xl bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-green)]/40">
-              <input className={INPUT} placeholder="Nombre *" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createStaff()} />
-              <input className={INPUT} placeholder="Teléfono" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
-              <div className="flex gap-2">
-                <button className={BTN_PRIMARY} onClick={createStaff} disabled={creating || !newName.trim()}>{creating ? "…" : "Crear"}</button>
-                <button className={BTN_GHOST} onClick={() => setAddingNew(false)}>Cancelar</button>
-              </div>
-            </div>
-          )}
-          {!addingNew && (
-            <button onClick={() => { setAddingNew(true); setSelectedId(null); }} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-[var(--color-wa-sep)] text-sm text-[var(--color-wa-text-sec)] hover:border-[var(--color-wa-green)] hover:text-[var(--color-wa-green)] transition-colors mt-1">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-              Agregar
-            </button>
-          )}
-        </div>
-      </Card>
-
-      {/* Detail panel */}
-      {selected && (
-        <div className="flex-1 flex flex-col gap-4">
-          <Card title="Datos del integrante">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-semibold text-[var(--color-wa-text-main)]">{selected.name}</span>
-              <div className="flex gap-2">
-                <button onClick={() => toggleActive(selected)} className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${selected.active ? "border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)] hover:border-amber-400 hover:text-amber-500" : "border-[var(--color-wa-green)]/40 text-[var(--color-wa-green)] hover:bg-[var(--color-wa-green)]/10"}`}>
-                  {selected.active ? "Desactivar" : "Activar"}
-                </button>
-                <button onClick={() => setDeleteTarget(selected)} className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                  Eliminar
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Nombre *</label>
-                <input className={INPUT} value={editName} onChange={(e) => setEditName(e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[var(--color-wa-text-sec)] mb-1">Teléfono</label>
-                <input className={INPUT} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="2646123456" />
-              </div>
-            </div>
-            <button onClick={saveInfo} disabled={savingInfo || !editName.trim()} className={BTN_PRIMARY}>{savingInfo ? "Guardando…" : "Guardar datos"}</button>
-          </Card>
-
-          <Card title="Disponibilidad semanal">
-            <div className="flex flex-col gap-2 mb-4">
-              {WEEK_DAYS.map((d, i) => {
-                const slot = availability.find((s) => s.day_of_week === i);
-                return (
-                  <div key={i} className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5 rounded-xl border border-[var(--color-wa-sep)] transition-colors ${slot ? "bg-[var(--color-wa-bg-main)]" : "bg-transparent"}`}>
-                    <div className="flex items-center gap-2.5">
-                      <button onClick={() => toggleDay(i)} className={`w-11 text-xs font-semibold py-1.5 rounded-lg flex-shrink-0 transition-colors ${slot ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)]" : "bg-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"}`}>{d}</button>
-                      {!slot && <span className="text-sm text-[var(--color-wa-text-sec)]">{WEEK_DAYS_FULL[i]} — sin atención</span>}
-                    </div>
-                    {slot && (
-                      <div className="flex items-center gap-2 flex-1 pl-[52px] sm:pl-0">
-                        <input type="time" value={slot.time_start} onChange={(e) => updateAvailTime(i, "time_start", e.target.value)} className="flex-1 sm:flex-none bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
-                        <span className="text-sm text-[var(--color-wa-text-sec)] flex-shrink-0">a</span>
-                        <input type="time" value={slot.time_end} onChange={(e) => updateAvailTime(i, "time_end", e.target.value)} className="flex-1 sm:flex-none bg-[var(--color-wa-bg-main)] border border-[var(--color-wa-sep)] rounded-lg px-2 py-1.5 text-sm text-[var(--color-wa-text-main)] outline-none focus:border-[var(--color-wa-green)] transition-colors" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <button onClick={saveAvailability} disabled={savingAvail} className={BTN_PRIMARY}>{savingAvail ? "Guardando…" : "Guardar disponibilidad"}</button>
-          </Card>
-        </div>
-      )}
-
-      {!selected && !addingNew && (
-        <div className="flex-1 flex items-center justify-center text-sm text-[var(--color-wa-text-sec)]">
-          Seleccioná un integrante para ver sus datos.
-        </div>
-      )}
-
-      {deleteTarget && (
-        <ConfirmDialog
-          message={`¿Eliminar a "${deleteTarget.name}" del personal? Esta acción no se puede deshacer.`}
-          onConfirm={confirmDeleteStaff}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
-      {deleteError && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setDeleteError(null)}>
-          <div className="bg-[var(--color-wa-panel-l)] rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[var(--color-wa-text-main)] text-sm font-medium mb-5">{deleteError}</p>
-            <div className="flex justify-end">
-              <button onClick={() => setDeleteError(null)} className={BTN_PRIMARY}>Entendido</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1061,9 +649,10 @@ export default function ConfigPage() {
       case "negocio":     return <SectionNegocio onSaved={showToast} />;
       case "servicios":   return <SectionServicios onSaved={showToast} />;
       case "promociones": return <SectionPromociones onSaved={showToast} />;
-      case "horarios":    return <SectionHorarios onSaved={showToast} />;
-      case "cerrados":    return <SectionCerrados onSaved={showToast} />;
-      case "personal":    return <SectionPersonal />;
+      // Horario del negocio, disponibilidad de cada uno y días cerrados en una
+      // sola pantalla: son la misma decisión operativa. Antes eran tres
+      // secciones y "cerrar mañana por feriado" obligaba a recorrerlas.
+      case "horarios":    return <HorariosPanel onSaved={showToast} />;
       case "backup":      return <SectionBackup />;
     }
   };
@@ -1075,40 +664,38 @@ export default function ConfigPage() {
         {/* Sidebar desktop */}
         <aside className="hidden md:flex w-[350px] flex-shrink-0 bg-[var(--color-wa-panel-l)] flex-col rounded-2xl shadow-[0_1px_4px_rgba(0,0,0,0.08)] overflow-hidden py-4 px-3 gap-1">
           <p className="text-[10px] font-semibold tracking-widest uppercase text-[var(--color-wa-text-sec)] px-3 mb-2">Configuración</p>
-          {SECTIONS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setActive(s.id)}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-left transition-colors w-full ${
-                active === s.id
-                  ? "bg-[var(--color-wa-hover)] text-[var(--color-wa-text-main)] font-semibold"
-                  : "text-[var(--color-wa-text-sec)] hover:bg-[var(--color-wa-hover)] hover:text-[var(--color-wa-text-main)]"
-              }`}
-            >
-              {s.icon}
-              {s.label}
-            </button>
-          ))}
+          {SECTIONS.map((s) =>
+            s.href ? (
+              <Link key={s.href} href={s.href} className={claseNav(false)}>
+                {s.icon}
+                {s.label}
+              </Link>
+            ) : (
+              <button key={s.id} onClick={() => setActive(s.id!)} className={claseNav(active === s.id)}>
+                {s.icon}
+                {s.label}
+              </button>
+            )
+          )}
         </aside>
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-0">
           {/* Mobile section pills */}
           <div className="md:hidden flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-hide">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setActive(s.id)}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  active === s.id
-                    ? "bg-[var(--color-wa-green)] text-[var(--color-wa-green-text)]"
-                    : "bg-[var(--color-wa-panel-l)] border border-[var(--color-wa-sep)] text-[var(--color-wa-text-sec)]"
-                }`}
-              >
-                {s.icon}
-                {s.label}
-              </button>
-            ))}
+            {SECTIONS.map((s) =>
+              s.href ? (
+                <Link key={s.href} href={s.href} className={clasePastilla(false)}>
+                  {s.icon}
+                  {s.label}
+                </Link>
+              ) : (
+                <button key={s.id} onClick={() => setActive(s.id!)} className={clasePastilla(active === s.id)}>
+                  {s.icon}
+                  {s.label}
+                </button>
+              )
+            )}
           </div>
 
           {renderSection()}

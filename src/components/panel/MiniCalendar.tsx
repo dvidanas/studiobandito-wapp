@@ -47,8 +47,17 @@ export function MiniCalendar({
 
   const visibleWeeks = compact && !isExpanded ? [weeks[activeWeekIndex]] : weeks;
 
+  // 310 px es el ancho util del calendario en las dos referencias: Studio
+  // Bandito (columna 350 con tarjeta p-5) y pastalovers (columna 340 con p-4,
+  // que da 308). Las celdas son w-8 fijas y van centradas en cada columna de la
+  // grilla, asi que todo el ancho sobrante se convierte en aire entre los dias:
+  // a 380 px el paso se va de 44.6 a 54.6 px y el calendario se ve mucho mas
+  // suelto aunque las celdas midan exactamente lo mismo.
+  //
+  // Con la columna en 350 este tope no recorta nada; esta para que la densidad
+  // no se mueva si alguien cambia el ancho de la columna mas adelante.
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 w-full max-w-[310px] mx-auto">
       {/* Month nav */}
       <div className="flex items-center justify-between mb-1">
         <button
@@ -84,7 +93,7 @@ export function MiniCalendar({
       {/* Weeks */}
       <div className="flex flex-col gap-1">
         {visibleWeeks.map((week, wi) => (
-          <div key={week.find(Boolean) ?? wi} className="grid grid-cols-7 gap-0.5">
+          <div key={week.find(Boolean) ?? wi} className="grid grid-cols-7 gap-1">
             {week.map((dayStr, di) => {
               if (!dayStr) return <div key={di} />;
               const isToday = dayStr === today;

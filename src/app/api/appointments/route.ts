@@ -1,25 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  listAppointments,
-  createAppointment,
-  getAppointmentStats,
-  listResources,
-} from "@/lib/db";
+import { listProfesionales, listServicios, createCita } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const from = searchParams.get("from") ?? new Date().toISOString().slice(0, 10);
-  const to = searchParams.get("to") ?? from;
-
-  const appointments = listAppointments(from, to);
-  const stats = getAppointmentStats();
-  const resources = listResources();
-
-  return NextResponse.json({ appointments, stats, resources });
-}
-
+/**
+ * PUENTE DE COMPATIBILIDAD — ver el comentario en /api/settings/services.
+ * La landing manda `service` (nombre, no id) y `resource_id` (siempre 1,
+ * hardcodeado en App.jsx): acá se resuelve servicio_id matcheando el nombre
+ * EXACTO contra el catálogo real. Siempre coincide porque el catálogo que ve
+ * la landing sale de este mismo /api/settings/services, que expone `nombre`
+ * tal cual. profesional_id se resuelve solo tomando a la única profesional
+ * activa (Sol hoy).
+ *
+ * Si el día de mañana hay más de una profesional activa, este puente deja de
+ * poder adivinar a quién asignarle el turno y devuelve 500 — hay que migrar
+ * la landing a /api/publico/reservar (que sí pide profesional_id) antes de
+ * sumar personal. Ver nota en CLAUDE.md.
+ */
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try {
@@ -28,34 +25,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { resource_id, date, time_start, duration_minutes, service, notes, contact_name, contact_phone, conversation_id, source } = body;
-
-  if (!resource_id || !date || !time_start || !duration_minutes) {
+  const { date, time_start, service, contact_name, contact_phone } = body;
+  if (!date || !time_start || !service || !contact_name || !contact_phone) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
-  let resolvedSource: "manual" | "bot" | "web" = "manual";
-  if (source === "manual" || source === "bot" || source === "web") {
-    resolvedSource = source;
-  } else {
-    const origin = req.headers.get("origin");
-    if (origin && !origin.includes("studiobanditobot.feer.com.ar")) {
-      resolvedSource = "web";
-    }
+  const activos = listProfesionales();
+  if (activos.length !== 1) {
+    return NextResponse.json(
+      { error: "No se pudo agendar automáticamente. Escribinos por WhatsApp para coordinar tu turno." },
+      { status: 500 }
+    );
   }
 
-  const id = createAppointment({
-    resource_id: Number(resource_id),
-    conversation_id: conversation_id ? Number(conversation_id) : null,
-    service: typeof service === "string" ? service : null,
-    date: date as string,
-    time_start: time_start as string,
-    duration_minutes: Number(duration_minutes),
-    notes: typeof notes === "string" ? notes : null,
-    contact_name: typeof contact_name === "string" ? contact_name : null,
-    contact_phone: typeof contact_phone === "string" ? contact_phone : null,
-    source: resolvedSource,
+  const servicio = listServicios().find((s) => s.nombre === service);
+  if (!servicio) {
+    return NextResponse.json(
+      { error: "Servicio no reconocido. Recargá la página e intentá de nuevo." },
+      { status: 400 }
+    );
+  }
+
+  const resultado = createCita({
+    profesional_id: activos[0].id,
+    servicio_id: servicio.id,
+    fecha: date as string,
+    hora_inicio: time_start as string,
+    cliente_nombre: contact_name as string,
+    cliente_telefono: contact_phone as string,
+    origen: "web",
   });
 
-  return NextResponse.json({ id }, { status: 201 });
+  if (!resultado.ok) {
+    return NextResponse.json({ error: resultado.error }, { status: 409 });
+  }
+
+  return NextResponse.json({ id: resultado.id }, { status: 201 });
 }

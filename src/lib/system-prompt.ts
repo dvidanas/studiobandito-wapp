@@ -1,28 +1,28 @@
-import { listServices, listPromotions, getAllSettings, getBusinessHours } from "./db";
+import { listServicios, listPromotions, getAllSettings, getBusinessHours } from "./db";
 import { clientConfig } from "./client.config";
 
 const DAY_ORDER = [
-  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+  "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo",
 ] as const;
 
 const DAY_NAMES: Record<string, string> = {
-  monday: "lunes", tuesday: "martes", wednesday: "miércoles",
-  thursday: "jueves", friday: "viernes", saturday: "sábado", sunday: "domingo",
+  lunes: "lunes", martes: "martes", miercoles: "miércoles",
+  jueves: "jueves", viernes: "viernes", sabado: "sábado", domingo: "domingo",
 };
 
 export function buildSystemPrompt(): string {
-  const services = listServices();
+  const services = listServicios();
   const promotions = listPromotions();
   const settings = getAllSettings();
 
-  const botName = clientConfig.botName;
-  const businessName = settings.business_name ?? clientConfig.businessName;
-  const businessDescription = settings.business_description ?? clientConfig.businessDescription;
-  const address = settings.address ?? clientConfig.address;
-  const phone = settings.phone ?? String(clientConfig.phone);
+  const botName = clientConfig.bot.nombre;
+  const businessName = settings.business_name ?? clientConfig.nombre;
+  const businessDescription = settings.business_description ?? clientConfig.descripcion;
+  const address = settings.address ?? clientConfig.direccion;
+  const phone = settings.phone ?? String(clientConfig.whatsapp);
 
-  // El horario sale de availability_slots (fuente de verdad de turnos), no de
-  // la clave settings.hours, que quedó muerta. Ver CLAUDE.md.
+  // El horario sale de `disponibilidad` (fuente de verdad de turnos). No hay
+  // ninguna otra clave que guarde horarios en paralelo. Ver CLAUDE.md.
   const { hours } = getBusinessHours();
 
   const hoursText = DAY_ORDER
@@ -36,10 +36,10 @@ export function buildSystemPrompt(): string {
       ? services
           .map((s) => {
             const detail: string[] = [];
-            if (s.price) detail.push(`$${Number(s.price).toLocaleString("es-AR")}`);
-            if (s.description) detail.push(s.description);
-            if (s.duration_minutes) detail.push(`${s.duration_minutes} min`);
-            return `${s.name}${detail.length ? ` (${detail.join(", ")})` : ""}`;
+            if (s.precio) detail.push(`$${Number(s.precio).toLocaleString("es-AR")}`);
+            if (s.descripcion) detail.push(s.descripcion);
+            if (s.duracion_min) detail.push(`${s.duracion_min} min`);
+            return `${s.nombre}${detail.length ? ` (${detail.join(", ")})` : ""}`;
           })
           .join(". ")
       : "consultar con el equipo";
@@ -64,7 +64,7 @@ TONO: Sos una chica argentina, hablás con voseo ("podés", "te espero", "elegí
 
 CÓMO ESCRIBIR: Sin listas ni saltos de línea. Una sola pregunta por mensaje. Si necesitás decir varias cosas, dividí tu respuesta en hasta 3 partes cortas usando --- como separador (sin texto alrededor del separador).
 
-SALUDO: Solo saludá y presentate si es el primer mensaje de la conversación (sin historial previo). Si ya hay mensajes anteriores, jamás volvás a saludar ni a presentarte. Cuando escriban por WhatsApp, fijate si el número ya existe como cliente registrado (tabla clients). Si existe, saludalo por su nombre y tratalo como cliente frecuente en vez de preguntarle el nombre de nuevo.
+SALUDO: Solo saludá y presentate si es el primer mensaje de la conversación (sin historial previo). Si ya hay mensajes anteriores, jamás volvás a saludar ni a presentarte. Cuando escriban por WhatsApp, fijate si el número ya existe como cliente registrado (tabla clientes). Si existe, saludalo por su nombre y tratalo como cliente frecuente en vez de preguntarle el nombre de nuevo.
 
 FLUJO DE CONVERSACIÓN:
 - Primer mensaje (sin historial) → saludá, decí tu nombre y preguntale el suyo para agendarlo.

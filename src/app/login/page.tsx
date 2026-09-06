@@ -1,9 +1,22 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const KEYS = ["1","2","3","4","5","6","7","8","9","←","0","✓"];
-const PIN_LENGTH = 4;
+
+/**
+ * El teclado no sabe cuántos dígitos tiene el PIN, a propósito.
+ *
+ * Antes había un `PIN_LENGTH = 4` que además auto-enviaba al cuarto dígito:
+ * con el PIN de 6 de este proyecto era imposible entrar, porque el quinto
+ * dígito ni se registraba. Acoplarlo a `loginPin.length` tampoco servía: este
+ * es un componente cliente y arrastraría el PIN al bundle del navegador.
+ *
+ * Se acepta cualquier largo entre MIN y MAX y se envía con ✓. Así el teclado
+ * no puede volver a desincronizarse del PIN real.
+ */
+const PIN_MIN = 4;
+const PIN_MAX = 8;
 
 function LoginForm() {
   const router = useRouter();
@@ -11,6 +24,16 @@ function LoginForm() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+  // El nombre sale del CRM, no escrito a mano: esta pantalla decía
+  // "STUDIO BANDITO", heredado del proyecto del que se clonó.
+  const [negocio, setNegocio] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/publico/catalogo")
+      .then((r) => r.json())
+      .then((d) => setNegocio(d?.negocio?.nombre ?? null))
+      .catch(() => setNegocio(null));
+  }, []);
 
   async function submit(value: string) {
     setLoading(true);
@@ -32,7 +55,7 @@ function LoginForm() {
     }
   }
 
-  function handleKey(key: string) {
+  const handleKey = useCallback((key: string) => {
     if (loading) return;
     if (key === "←") {
       setPin((p) => p.slice(0, -1));
@@ -40,16 +63,25 @@ function LoginForm() {
       return;
     }
     if (key === "✓") {
-      if (pin.length === PIN_LENGTH) submit(pin);
+      if (pin.length >= PIN_MIN) submit(pin);
       return;
     }
-    if (pin.length >= PIN_LENGTH) return;
-    const next = pin + key;
-    setPin(next);
-    if (next.length === PIN_LENGTH) submit(next);
-  }
+    if (pin.length >= PIN_MAX) return;
+    setPin(pin + key);
+  }, [loading, pin]);
 
-  const canSubmit = pin.length === PIN_LENGTH && !loading;
+  // Teclado fisico: tipear el PIN a puro click es tedioso.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key >= "0" && e.key <= "9") handleKey(e.key);
+      else if (e.key === "Backspace") handleKey("←");
+      else if (e.key === "Enter") handleKey("✓");
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleKey]);
+
+  const canSubmit = pin.length >= PIN_MIN && !loading;
 
   return (
     <div style={{
@@ -95,7 +127,7 @@ function LoginForm() {
           color: "var(--text-main)",
           margin: 0,
         }}>
-          STUDIO BANDITO
+          {(negocio ?? "").toUpperCase()}
         </h1>
         <p style={{
           color: "var(--text-sec)",
@@ -105,13 +137,13 @@ function LoginForm() {
           margin: 0,
           fontWeight: 500
         }}>
-          Ingresá tu código
+          Ingresá tu código y confirmá con ✓
         </p>
       </div>
 
       {/* PIN bubbles (Elasticized) */}
       <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", height: "3rem" }}>
-        {Array.from({ length: PIN_LENGTH }).map((_, i) => {
+        {Array.from({ length: Math.max(PIN_MIN, pin.length) }).map((_, i) => {
           const isActive = pin.length > i;
           return (
             <div

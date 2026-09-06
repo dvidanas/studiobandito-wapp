@@ -1,26 +1,25 @@
 import { NextResponse } from "next/server";
-import { listServices, createService } from "@/lib/db";
+import { listServicios } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * PUENTE DE COMPATIBILIDAD — la landing pública (03_landing_014) todavía
+ * llama a esta ruta vieja de Bandito, no a /api/publico/catalogo. Traduce el
+ * catálogo real (servicios) al shape que la landing ya sabe leer, para no
+ * tener que tocarla en este corte. Sacar cuando se adapte la landing a los
+ * endpoints nativos de Corte — ver CLAUDE.md.
+ */
 export async function GET() {
-  try {
-    return NextResponse.json(listServices(true));
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return Response.json({ error: msg }, { status: 500 });
-  }
-}
-
-export async function POST(req: Request) {
-  const body = await req.json();
-  if (!body.name?.trim()) return NextResponse.json({ error: "name required" }, { status: 400 });
-  const id = createService({
-    name: body.name.trim(),
-    description: body.description?.trim() ?? null,
-    price: body.price?.trim() ?? null,
-    duration_minutes: Number(body.duration_minutes) || 30,
-    active: 1,
-  });
-  return NextResponse.json({ id });
+  const servicios = listServicios();
+  return NextResponse.json(
+    servicios.map((s) => ({
+      id: s.id,
+      name: s.nombre,
+      description: s.descripcion,
+      price: s.precio,
+      duration_minutes: s.duracion_min,
+      active: s.activo,
+    }))
+  );
 }

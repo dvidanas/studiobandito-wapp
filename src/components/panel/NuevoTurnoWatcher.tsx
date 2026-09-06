@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { formatTime } from "@/lib/panelDates";
 
 /**
- * Aviso de turno nuevo. Portado del patrón de Pasta Lovers, con dos diferencias:
+ * Aviso de turno nuevo.
  *
- * 1. El watermark es un timestamp UNIX en segundos, no un texto
- *    "YYYY-MM-DD HH:MM:SS": acá `appointments.created_at` es INTEGER.
- * 2. Reemplaza al refetch completo que la vista de turnos hacía cada 15 s. Es un
- *    poll delta: pide solo lo creado desde la última vuelta y refresca la lista
- *    únicamente cuando hay algo nuevo.
+ * Es un poll delta: pide solo lo creado desde la última vuelta y refresca la
+ * lista únicamente cuando hay algo nuevo, en lugar del refetch completo cada
+ * 15 s que hacía antes la vista de turnos.
+ *
+ * El watermark viaja como segundos UNIX, pero `citas.created_at` se guarda como
+ * texto UTC ("YYYY-MM-DD HH:MM:SS") — el default de SQLite. La conversión pasa
+ * por `aUnix()`: si se comparara el texto crudo contra el watermark numérico,
+ * el aviso no volvería a dispararse nunca.
  */
 
 const POLL_INTERVAL_MS = 100_000;
@@ -36,7 +39,16 @@ function formatFechaCorta(fecha: string): string {
 }
 
 /** Evento que dispara el watcher para que la vista de turnos refresque su lista. */
-export const EVENTO_TURNOS_NUEVOS = "bandito:turnos-nuevos";
+export const EVENTO_TURNOS_NUEVOS = "studiobandito:turnos-nuevos";
+
+/**
+ * "YYYY-MM-DD HH:MM:SS" (UTC, como lo guarda SQLite) → segundos UNIX.
+ * La Z es la que evita que el navegador lo interprete en hora local.
+ */
+function aUnix(createdAt: string): number {
+  const ms = Date.parse(createdAt.replace(" ", "T") + "Z");
+  return Number.isNaN(ms) ? ahoraUnix() : Math.floor(ms / 1000);
+}
 
 export function NuevoTurnoWatcher() {
   const router = useRouter();
@@ -97,27 +109,28 @@ export function NuevoTurnoWatcher() {
 
   const poll = useCallback(async () => {
     try {
-      const res = await fetch(`/api/appointments/nuevos?desde=${lastCheckedRef.current}`);
+      const res = await fetch(`/api/citas/nuevas?desde=${lastCheckedRef.current}`);
       if (!res.ok) return;
-      const data: {
-        appointments: {
-          id: number;
-          service: string | null;
-          date: string;
-          time_start: string;
-          created_at: number;
-          contact_name: string | null;
-          contact_phone: string | null;
-        }[];
-      } = await res.json();
+      const citas: {
+        id: number;
+        servicio_nombre: string | null;
+        profesional_nombre: string;
+        fecha: string;
+        hora_inicio: string;
+        created_at: string;
+        cliente_nombre: string | null;
+        cliente_telefono: string | null;
+      }[] = await res.json();
 
-      if (data.appointments.length === 0) return;
+      if (!Array.isArray(citas) || citas.length === 0) return;
 
-      // Avanzar el watermark al último created_at recibido, aunque ya se hubiera
-      // avisado de esos turnos.
-      lastCheckedRef.current = data.appointments[data.appointments.length - 1].created_at;
+      // Avanzar el watermark al created_at más nuevo recibido, aunque ya se
+      // hubiera avisado de esas citas. El endpoint las devuelve de la más
+      // reciente a la más vieja, así que se toma el máximo explícitamente en
+      // lugar de confiar en el orden.
+      lastCheckedRef.current = Math.max(...citas.map((c) => aUnix(c.created_at)));
 
-      const nuevos = data.appointments.filter((a) => !notifiedIdsRef.current.has(a.id));
+      const nuevos = citas.filter((a) => !notifiedIdsRef.current.has(a.id));
       if (nuevos.length === 0) return;
 
       nuevos.forEach((a) => notifiedIdsRef.current.add(a.id));
@@ -125,10 +138,10 @@ export function NuevoTurnoWatcher() {
         ...prev,
         ...nuevos.map((a) => ({
           id: a.id,
-          nombre: a.contact_name || a.contact_phone || "Sin nombre",
-          servicio: a.service || "Turno",
-          fecha: a.date,
-          hora: a.time_start,
+          nombre: a.cliente_nombre || a.cliente_telefono || "Sin nombre",
+          servicio: `${a.servicio_nombre || "Turno"} · ${a.profesional_nombre}`,
+          fecha: a.fecha,
+          hora: a.hora_inicio,
         })),
       ]);
       nuevos.forEach((a) => {

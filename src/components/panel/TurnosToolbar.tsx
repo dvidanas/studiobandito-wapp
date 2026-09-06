@@ -1,6 +1,9 @@
 "use client";
 
-import type { Appointment } from "./types";
+import { COLOR_ESTADO, type FiltroEstado, type Resource } from "./types";
+
+const claseSelect =
+  "bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] cursor-pointer";
 
 /**
  * Fila de stats + barra de búsqueda y filtros de la vista de Turnos.
@@ -11,22 +14,30 @@ import type { Appointment } from "./types";
  * consultas ni métricas nuevas.
  */
 
+/**
+ * `tono` es un color CSS, no clases de Tailwind: las tarjetas de estado tienen
+ * que salir de COLOR_ESTADO igual que el resto de la app, y con clases habría
+ * que volver a elegir el color a mano acá.
+ */
 function StatCard({
   label,
   valor,
   sufijo,
-  color,
+  tono,
   icon,
 }: {
   label: string;
   valor: string | number;
   sufijo?: string;
-  color: string;
+  tono: string;
   icon: React.ReactNode;
 }) {
   return (
     <div className="border border-[var(--color-wa-sep)] rounded-2xl p-3 lg:p-4 bg-[var(--color-wa-panel-l)] shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
-      <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+      <div
+        className="w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: `color-mix(in srgb, ${tono} 14%, transparent)`, color: tono }}
+      >
         {icon}
       </div>
       <div className="min-w-0">
@@ -47,24 +58,30 @@ function StatCard({
 export function TurnosToolbar({
   total,
   confirmados,
-  pendientes,
+  atendidos,
   agenda,
   searchQuery,
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  profesionales,
+  profesionalFilter,
+  onProfesionalFilterChange,
   onIrAHoy,
   onIrAManana,
   onIrAFinde,
 }: {
   total: number;
   confirmados: number;
-  pendientes: number;
+  atendidos: number;
   agenda: string;
   searchQuery: string;
   onSearchChange: (v: string) => void;
-  statusFilter: "todos" | Appointment["status"];
-  onStatusFilterChange: (v: "todos" | Appointment["status"]) => void;
+  statusFilter: FiltroEstado;
+  onStatusFilterChange: (v: FiltroEstado) => void;
+  profesionales: Resource[];
+  profesionalFilter: number | "todos";
+  onProfesionalFilterChange: (v: number | "todos") => void;
   onIrAHoy: () => void;
   onIrAManana: () => void;
   onIrAFinde: () => void;
@@ -76,7 +93,7 @@ export function TurnosToolbar({
         <StatCard
           label="Turnos del día"
           valor={total}
-          color="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          tono="#6366F1"
           icon={
             <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -86,27 +103,30 @@ export function TurnosToolbar({
         <StatCard
           label="Confirmados"
           valor={confirmados}
-          color="bg-teal-500/10 text-teal-600 dark:text-teal-400"
+          tono={COLOR_ESTADO.confirmada}
           icon={
             <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           }
         />
+        {/* Decía "Pendientes" y mostraba el conteo de ATENDIDAS: la etiqueta y
+            el número no se correspondían. Es el conteo de atendidas, así que
+            va con el verde de atendida y con su nombre. */}
         <StatCard
-          label="Pendientes"
-          valor={pendientes}
-          color="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+          label="Atendidos"
+          valor={atendidos}
+          tono={COLOR_ESTADO.atendida}
           icon={
             <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           }
         />
         <StatCard
           label="Agenda ocupada"
           valor={agenda}
-          color="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+          tono="var(--color-wa-alerta)"
           icon={
             <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -169,15 +189,49 @@ export function TurnosToolbar({
           </button>
         </div>
 
+        {/* Un solo barbero por vez. La lista sale de los profesionales que ya
+            trajo la página; no hay pedido nuevo.
+            Con un solo profesional activo (hoy: Sol) el filtro es un select
+            de dos opciones que siempre significan lo mismo — se oculta en
+            vez de mostrar una decisión que no existe. Vuelve solo cuando
+            haya más de un profesional activo, sin tocar código. */}
+        {profesionales.length > 1 && (
+          <select
+            value={String(profesionalFilter)}
+            onChange={(e) =>
+              onProfesionalFilterChange(e.target.value === "todos" ? "todos" : Number(e.target.value))
+            }
+            className={claseSelect}
+            aria-label="Filtrar por profesional"
+          >
+            <option value="todos">Todos los barberos</option>
+            {profesionales.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {/* "Cancelados" agrupa los dos motivos; el optgroup deja filtrar por
+            uno solo, que es para lo que sirve guardar el motivo. */}
         <select
           value={statusFilter}
-          onChange={(e) => onStatusFilterChange(e.target.value as "todos" | Appointment["status"])}
-          className="bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] cursor-pointer"
+          onChange={(e) => onStatusFilterChange(e.target.value as FiltroEstado)}
+          className={claseSelect}
+          aria-label="Filtrar por estado"
         >
           <option value="todos">Todos los estados</option>
-          <option value="confirmed">Solo confirmados</option>
-          <option value="pending">Solo pendientes</option>
-          <option value="cancelled">Solo cancelados</option>
+          {/* Extension propia de Bandito: 11 turnos migrados que nunca se
+              confirmaron. Corte no tiene este estado (ver types.ts). */}
+          <option value="pendiente">Sin confirmar (migrados)</option>
+          <option value="confirmada">Solo confirmados</option>
+          <option value="atendida">Solo atendidos</option>
+          <option value="canceladas">Cancelados — todos</option>
+          <optgroup label="Cancelados por motivo">
+            <option value="cancelada">Canceló el turno</option>
+            <option value="no_show">No vino</option>
+          </optgroup>
         </select>
       </div>
     </div>

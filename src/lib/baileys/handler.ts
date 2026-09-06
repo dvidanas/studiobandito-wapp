@@ -11,18 +11,20 @@ import {
   updateLead,
   setConversationHasLead,
   getLeadByConversationId,
-  getNextAvailableSlots,
-  getAvailableSlots,
-  createAppointment,
-  hasAppointmentForSlot,
+  getProximosSlots,
+  getSlotsDisponibles,
+  createCita,
+  existeCitaParaConversacion,
+  listServicios,
+  duracionServicioMasCorto,
   setMode,
-  type AvailableSlot,
+  type SlotDisponible,
 } from "@/lib/db";
 import { getChatCompletion, getRawCompletion, type ChatMessage } from "@/lib/gemini";
 import { sendTextMessage, markMessageRead, getPhoneForLid } from "./client";
 import { clientConfig } from "@/lib/client.config";
 
-const DELAY = clientConfig.responseDelayMs ?? 8000;
+const DELAY = clientConfig.bot.responseDelayMs ?? 8000;
 
 const INTENT_KEYWORDS = [
   "presupuesto", "precio", "cuánto", "cuanto", "contratar", "contrataría",
@@ -109,23 +111,24 @@ async function sendDebouncedReply(convoId: number, phone: string, sendJid: strin
     content: m.content,
   }));
 
-  const apptConfig = (clientConfig as Record<string, unknown>).appointments as
-    | { enabled: boolean }
-    | undefined;
-  const duration: number = (clientConfig as Record<string, unknown>).appointmentDuration as number ?? 40;
+  const reservasHabilitadas = clientConfig.bot.reservas;
+  // Se ofrece la grilla del servicio MÁS CORTO: es la que deja más huecos
+  // visibles. Al confirmar, `createCita` recalcula la duración real del
+  // servicio elegido y rechaza el turno si no entra.
+  const duration: number = duracionServicioMasCorto() ?? 30;
   let availabilityNote = "";
-  let offeredSlots: Array<AvailableSlot & { date: string }> = [];
-  if (apptConfig?.enabled) {
-    offeredSlots = getNextAvailableSlots(14, duration);
+  let offeredSlots: Array<SlotDisponible & { fecha: string }> = [];
+  if (reservasHabilitadas) {
+    offeredSlots = getProximosSlots(14, { duracionMin: duration });
     console.log(`[slots] ${offeredSlots.length} disponibles (próximos 14 días)`);
     if (offeredSlots.length > 0) {
       const slotList = offeredSlots
         .slice(0, 200)
         .map((s) => {
-          const d = new Date(s.date + "T12:00:00");
+          const d = new Date(s.fecha + "T12:00:00");
           const dayName = d.toLocaleDateString("es-AR", { weekday: "long" });
-          const [, month, day] = s.date.split("-");
-          return `${dayName} ${day}/${month} a las ${s.time_start}`;
+          const [, month, day] = s.fecha.split("-");
+          return `${dayName} ${day}/${month} a las ${s.hora_inicio} con ${s.profesional_nombre}`;
         })
         .join(", ");
       availabilityNote =
@@ -140,7 +143,7 @@ async function sendDebouncedReply(convoId: number, phone: string, sendJid: strin
 
   // Intentar reservar ANTES de que Soledad responda, para que su respuesta refleje la realidad
   let bookedSlot: { date: string; time_start: string } | null = null;
-  if (apptConfig?.enabled && offeredSlots.length > 0) {
+  if (reservasHabilitadas && offeredSlots.length > 0) {
     bookedSlot = await tryBookAppointmentFromChat(convoId, phone, contactPhone, history, offeredSlots, duration).catch(
       (err) => { console.error("[appt] error en tryBookAppointmentFromChat:", err); return null; }
     );
@@ -208,13 +211,13 @@ async function tryBookAppointmentFromChat(
   phone: string,
   contactPhone: string | null,
   history: { role: string; content: string }[],
-  offeredSlots: Array<AvailableSlot & { date: string }>,
+  offeredSlots: Array<SlotDisponible & { fecha: string }>,
   defaultDuration: number
 ): Promise<{ date: string; time_start: string } | null> {
   const lastUserMsg = [...history].reverse().find((m) => m.role === "user");
   if (!lastUserMsg) return null;
 
-  const slotList = offeredSlots.map((s) => `${s.date} ${s.time_start}`).join(", ");
+  const slotList = offeredSlots.map((s) => `${s.fecha} ${s.hora_inicio}`).join(", ");
   const conversation = history.slice(-6).map((m) =>
     `${m.role === "user" ? "Usuario" : "Bot"}: ${m.content}`
   ).join("\n");
@@ -258,22 +261,22 @@ null`;
 
   console.log(`[appt] extractor detectó: ${date} ${time_start} servicio="${service ?? "null"}"`);
 
-  const stillAvailable = getAvailableSlots(date, defaultDuration).some(
-    (s) => s.time_start === time_start
+  const stillAvailable = getSlotsDisponibles(date, { duracionMin: defaultDuration }).some(
+    (s) => s.hora_inicio === time_start
   );
   if (!stillAvailable) {
     console.log(`[appt] slot ${date} ${time_start} ya no está disponible, ignorando`);
     return null;
   }
 
-  if (hasAppointmentForSlot(convoId, date, time_start)) {
+  if (existeCitaParaConversacion(convoId, date, time_start)) {
     console.log(`[appt] ya existe turno para conversación ${convoId} en ${date} ${time_start}`);
     return null;
   }
 
   const lead = getLeadByConversationId(convoId);
   const convo = getConversationById(convoId);
-  const validSlot = offeredSlots.find((s) => s.date === date && s.time_start === time_start);
+  const validSlot = offeredSlots.find((s) => s.fecha === date && s.hora_inicio === time_start);
   if (!validSlot) {
     console.log(`[appt] slot ${date} ${time_start} no está en offeredSlots (${offeredSlots.length} slots disponibles) — posible desfase de sesión`);
     return null;
@@ -281,27 +284,42 @@ null`;
 
   const contactName = lead?.name ?? convo?.name ?? null;
 
+  // El servicio ya no es texto libre: `citas` lo referencia por id, y de ahí
+  // salen la duración y el precio. Si no se puede identificar cuál es, NO se
+  // reserva: agendar el servicio equivocado descoloca la agenda del día y
+  // factura mal. El bot vuelve a preguntar.
+  const servicios = listServicios();
   const matchedService = service
-    ? clientConfig.services.find((s) =>
-        s.name.toLowerCase().includes(service.toLowerCase()) ||
-        service.toLowerCase().includes(s.name.toLowerCase().split("/")[0].trim())
-      )
+    ? servicios.find((s) => {
+        const nombre = s.nombre.toLowerCase();
+        const pedido = service.toLowerCase();
+        return nombre.includes(pedido) || pedido.includes(nombre.split("/")[0].trim());
+      })
     : null;
-  const appointmentDuration = matchedService?.duration ?? defaultDuration;
 
-  const id = createAppointment({
-    resource_id: validSlot.resource_id,
+  if (!matchedService) {
+    console.log(`[appt] no se pudo identificar el servicio ("${service ?? "null"}"), no se reserva`);
+    return null;
+  }
+
+  const resultado = createCita({
+    profesional_id: validSlot.profesional_id,
+    servicio_id: matchedService.id,
+    sucursal_id: validSlot.sucursal_id,
     conversation_id: convoId,
-    service: service ?? null,
-    date,
-    time_start,
-    duration_minutes: appointmentDuration,
-    source: "bot",
-    contact_name: contactName,
-    contact_phone: contactPhone,
+    fecha: date,
+    hora_inicio: time_start,
+    cliente_nombre: contactName,
+    cliente_telefono: contactPhone,
+    origen: "bot",
   });
 
-  console.log(`[appt] turno PENDIENTE creado id=${id} para +${phone} → ${date} ${time_start}`);
+  if (!resultado.ok) {
+    console.log(`[appt] rechazado por el motor de reservas: ${resultado.error}`);
+    return null;
+  }
+
+  console.log(`[appt] cita creada id=${resultado.id} para +${phone} → ${date} ${time_start} (${matchedService.nombre})`);
   return { date, time_start };
 }
 

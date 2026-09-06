@@ -1,182 +1,135 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { plata } from "@/lib/format";
+import { sumarDias, diasEntre, rangoDePreset, type PresetRango } from "@/lib/panelDates";
+import { SelectorRango } from "@/components/panel/PanelChrome";
+import { COLOR_ESTADO } from "@/components/panel/types";
+
+/**
+ * Métricas del negocio.
+ *
+ * No hay nada del bot acá. La estructura de WhatsApp viene heredada de Bandito
+ * y está apagada, así que "Contactos", "Mensajes IA", "Conversión" y "Atención
+ * manual" mostraban cero y el gráfico de mensajes salía vacío. El código del
+ * bot sigue entero; lo que se sacó es medirlo donde no corre.
+ *
+ * Todo lo que se ve responde al selector de rango de arriba, con una excepción
+ * marcada en la tarjeta: "Próximos" es un stock ("cuántos turnos tengo de acá
+ * en adelante"), no un flujo, así que no tiene sentido filtrarlo por fechas.
+ */
+
+interface Comparado { valor: number; anterior: number }
 
 interface MetricsData {
-  contacts: { total: number; thisWeek: number; thisMonth: number };
-  messages: { total: number; ai: number; byUser: number; humanHandled: number; humanInterventions: number };
-  appointments: { total: number; pending: number; confirmed: number; cancelled: number; thisMonth: number; fromBot: number; fromManual: number };
-  conversion: { rate: number; contactsWithAppts: number };
-  topServices: Array<{ service: string; count: number }>;
-  appointmentsByDay: Array<{ date: string; count: number }>;
-  messagesByDay: Array<{ day: string; user: number; ai: number }>;
+  rango: { desde: string; hasta: string; dias: number };
+  rangoAnterior: { desde: string; hasta: string };
+  turnos: Comparado;
+  facturacion: Comparado;
+  ticketPromedio: Comparado;
+  perdidos: Comparado;
+  clientesNuevos: Comparado;
+  proximos: number;
+  estados: { confirmada: number; atendida: number; cancelada: number; no_show: number };
+  origen: { web: number; manual: number; bot: number };
+  topServicios: Array<{ servicio: string; count: number }>;
+  porProfesional: Array<{ profesional: string; turnos: number; facturacion: number }>;
+  porFranja: Array<{ hora: number; count: number }>;
+  citasPorDia: Array<{ fecha: string; count: number }>;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function genDays(n: number): string[] {
-  return Array.from({ length: n }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (n - 1 - i));
-    return d.toISOString().slice(0, 10);
-  });
-}
+// ── Fechas ────────────────────────────────────────────────────────────────────
 
-function fmtShort(iso: string) {
-  const d = new Date(iso + "T12:00:00");
-  return `${d.getDate()}/${d.getMonth() + 1}`;
-}
+const hoyAR = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
 
-// ── Bar chart (turnos por día) ────────────────────────────────────────────────
-function DayBars({ data }: { data: Array<{ date: string; count: number }> }) {
-  const days = useMemo(() => genDays(30), []);
-  const map = useMemo(() => new Map(data.map(d => [d.date, d.count])), [data]);
-  const values = days.map(d => map.get(d) ?? 0);
+const fmtShort = (iso: string) => {
+  const d = new Date(`${iso}T12:00:00`);
+  return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+};
+
+const fmtLargo = (iso: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+
+// ── Barras por día ────────────────────────────────────────────────────────────
+
+/**
+ * Una barra por día del rango. Con rangos largos las barras se vuelven finitas
+ * pero siguen siendo legibles como forma; el detalle exacto está en el title.
+ */
+function DayBars({ data, desde, hasta }: {
+  data: Array<{ fecha: string; count: number }>;
+  desde: string; hasta: string;
+}) {
+  const days = useMemo(() => {
+    const n = Math.max(1, diasEntre(desde, hasta));
+    return Array.from({ length: n }, (_, i) => sumarDias(desde, i));
+  }, [desde, hasta]);
+  const map = useMemo(() => new Map(data.map((d) => [d.fecha, d.count])), [data]);
+  const values = days.map((d) => map.get(d) ?? 0);
   const max = Math.max(...values, 1);
-  const today = new Date().toISOString().slice(0, 10);
+  const hoy = hoyAR();
   const total = values.reduce((a, b) => a + b, 0);
-  const hasData = total > 0;
 
   return (
     <div>
-      <div className="flex items-end gap-[2px] h-16 w-full mb-2">
+      <div className="flex items-end gap-[2px] h-20 w-full mb-2">
         {days.map((date, i) => {
           const v = values[i];
-          const h = v > 0 ? Math.max(4, Math.round((v / max) * 56)) : 2;
-          const isToday = date === today;
+          const h = v > 0 ? Math.max(4, Math.round((v / max) * 72)) : 2;
           return (
             <div
               key={date}
               className={`flex-1 rounded-sm cursor-default transition-opacity ${
-                isToday
+                date === hoy
                   ? "bg-[var(--color-wa-green)]"
                   : v > 0
                     ? "bg-[var(--color-wa-green)] opacity-55 hover:opacity-90"
                     : "bg-[var(--color-wa-sep)] opacity-25"
               }`}
               style={{ height: `${h}px` }}
-              title={`${new Date(date + "T12:00:00").toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}: ${v} turno${v !== 1 ? "s" : ""}`}
+              title={`${new Date(`${date}T12:00:00`).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}: ${v} turno${v !== 1 ? "s" : ""}`}
             />
           );
         })}
       </div>
       <div className="flex justify-between text-[10px] text-[var(--color-wa-text-sec)]">
         <span>{fmtShort(days[0])}</span>
-        {hasData ? (
-          <span className="font-medium text-[var(--color-wa-text-main)]">{total} turno{total !== 1 ? "s" : ""} en 30 días</span>
-        ) : (
-          <span className="italic">Sin turnos en los últimos 30 días</span>
-        )}
-        <span>Hoy</span>
+        <span className={total > 0 ? "font-medium text-[var(--color-wa-text-main)]" : "italic"}>
+          {total > 0
+            ? `${total} turno${total !== 1 ? "s" : ""} en ${days.length} día${days.length !== 1 ? "s" : ""}`
+            : "Sin turnos en este período"}
+        </span>
+        <span>{fmtShort(days[days.length - 1])}</span>
       </div>
     </div>
   );
 }
 
-// ── Area line chart (mensajes por día) ───────────────────────────────────────
-function MessageAreaChart({ data }: { data: Array<{ day: string; user: number; ai: number }> }) {
-  const days = useMemo(() => genDays(14), []);
-  const map = useMemo(() => new Map(data.map(d => [d.day, d])), [data]);
-  const cd = days.map(day => ({ day, user: map.get(day)?.user ?? 0, ai: map.get(day)?.ai ?? 0 }));
-  const maxV = Math.max(...cd.flatMap(d => [d.user, d.ai]), 1);
-  const hasData = cd.some(d => d.user > 0 || d.ai > 0);
+// ── Barras horizontales genéricas ─────────────────────────────────────────────
 
-  if (!hasData) {
-    return (
-      <div className="h-24 flex items-center justify-center text-sm text-[var(--color-wa-text-sec)]">
-        Sin mensajes en los últimos 14 días
-      </div>
-    );
-  }
-
-  const W = 400, H = 64, LH = 14, N = cd.length;
-  const step = N > 1 ? W / (N - 1) : W;
-  const px = (i: number) => (N > 1 ? i * step : W / 2);
-  const py = (v: number) => H - Math.max(0, (v / maxV) * (H - 2));
-
-  const polyPts = (k: "user" | "ai") => cd.map((d, i) => `${px(i)},${py(d[k])}`).join(" ");
-  const areaPts = (k: "user" | "ai") => {
-    const inner = cd.map((d, i) => `${px(i)},${py(d[k])}`).join(" L ");
-    return `M 0,${H} L ${inner} L ${W},${H} Z`;
-  };
-
-  return (
-    <div>
-      <div className="flex gap-5 mb-3 text-[11px] text-[var(--color-wa-text-sec)]">
-        <span className="flex items-center gap-1.5">
-          <span className="w-5 h-0.5 rounded inline-block" style={{ background: "#60a5fa" }} />
-          Mensajes recibidos
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-5 h-0.5 rounded inline-block" style={{ background: "#25d366" }} />
-          Respuestas IA
-        </span>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H + LH}`} className="w-full" style={{ height: 88 }}>
-        <defs>
-          <linearGradient id="mGrBlue" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.01" />
-          </linearGradient>
-          <linearGradient id="mGrGreen" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#25d366" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#25d366" stopOpacity="0.01" />
-          </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75, 1].map(p => (
-          <line key={p} x1={0} y1={H - p * H} x2={W} y2={H - p * H} stroke="currentColor" strokeOpacity={0.05} strokeWidth={1} />
-        ))}
-        <path d={areaPts("user")} fill="url(#mGrBlue)" />
-        <path d={areaPts("ai")} fill="url(#mGrGreen)" />
-        <polyline points={polyPts("user")} fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-        <polyline points={polyPts("ai")} fill="none" stroke="#25d366" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-        {cd.map((d, i) => (
-          <g key={d.day}>
-            {d.user > 0 && <circle cx={px(i)} cy={py(d.user)} r={2.5} fill="#60a5fa" />}
-            {d.ai > 0 && <circle cx={px(i)} cy={py(d.ai)} r={2.5} fill="#25d366" />}
-          </g>
-        ))}
-        {cd.map((d, i) => {
-          const date = new Date(d.day + "T12:00:00");
-          const show = i === 0 || i === N - 1 || date.getDay() === 1;
-          if (!show) return null;
-          return (
-            <text
-              key={d.day}
-              x={px(i)}
-              y={H + LH - 1}
-              textAnchor={i === 0 ? "start" : i === N - 1 ? "end" : "middle"}
-              fontSize="9"
-              fill="currentColor"
-              fillOpacity={0.45}
-            >
-              {fmtShort(d.day)}
-            </text>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
-// ── Service bars ──────────────────────────────────────────────────────────────
-function ServiceBars({ services }: { services: Array<{ service: string; count: number }> }) {
-  const max = Math.max(...services.map(s => s.count), 1);
-  if (!services.length) {
-    return <p className="text-sm text-[var(--color-wa-text-sec)] py-2">Sin servicios registrados en turnos</p>;
-  }
+function Barras({ filas, vacio }: {
+  filas: Array<{ etiqueta: string; valor: number; detalle?: string }>;
+  vacio: string;
+}) {
+  const max = Math.max(...filas.map((f) => f.valor), 1);
+  if (!filas.length) return <p className="text-sm text-[var(--color-wa-text-sec)] py-2">{vacio}</p>;
   return (
     <div className="flex flex-col gap-3.5">
-      {services.map(s => (
-        <div key={s.service}>
+      {filas.map((f) => (
+        <div key={f.etiqueta}>
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-sm text-[var(--color-wa-text-main)] truncate pr-3">{s.service}</span>
+            <span className="text-sm text-[var(--color-wa-text-main)] truncate pr-3">{f.etiqueta}</span>
             <span className="text-xs font-semibold text-[var(--color-wa-text-sec)] flex-shrink-0">
-              {s.count} turno{s.count !== 1 ? "s" : ""}
+              {f.detalle ?? f.valor}
             </span>
           </div>
           <div className="h-1.5 bg-[var(--color-wa-sep)] rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${(s.count / max) * 100}%`, background: "var(--color-wa-green)" }}
+              style={{ width: `${(f.valor / max) * 100}%`, background: "var(--color-wa-green)" }}
             />
           </div>
         </div>
@@ -185,7 +138,6 @@ function ServiceBars({ services }: { services: Array<{ service: string; count: n
   );
 }
 
-// ── Status row ────────────────────────────────────────────────────────────────
 function StatusRow({ label, count, total, hex }: { label: string; count: number; total: number; hex: string }) {
   const pct = total > 0 ? (count / total) * 100 : 0;
   return (
@@ -204,12 +156,8 @@ function StatusRow({ label, count, total, hex }: { label: string; count: number;
   );
 }
 
-// ── Card ──────────────────────────────────────────────────────────────────────
 function Card({ title, sub, children, className = "" }: {
-  title: string;
-  sub?: string;
-  children: React.ReactNode;
-  className?: string;
+  title: string; sub?: string; children: React.ReactNode; className?: string;
 }) {
   return (
     <div className={`bg-[var(--color-wa-panel-l)] rounded-2xl border border-[var(--color-wa-sep)] overflow-hidden ${className}`}>
@@ -222,256 +170,344 @@ function Card({ title, sub, children, className = "" }: {
   );
 }
 
-// ── KPI Card ──────────────────────────────────────────────────────────────────
-function Kpi({ label, value, sub, iconHex, icon }: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  iconHex: string;
-  icon: React.ReactNode;
+// ── KPI ───────────────────────────────────────────────────────────────────────
+
+/**
+ * `menosEsMejor` invierte el color de la variación: en "Turnos perdidos" subir
+ * es malo, y pintarlo de verde porque el número creció sería una mentira.
+ */
+function Delta({ valor, anterior, menosEsMejor = false }: {
+  valor: number; anterior: number; menosEsMejor?: boolean;
+}) {
+  if (anterior === 0) {
+    return (
+      <p className="text-[11px] text-[var(--color-wa-text-sec)] mt-1.5">
+        {valor === 0 ? "sin datos en el período anterior" : "nada en el período anterior"}
+      </p>
+    );
+  }
+  const pct = Math.round(((valor - anterior) / anterior) * 100);
+  const sube = pct > 0;
+  const bueno = menosEsMejor ? !sube : sube;
+  const color = pct === 0
+    ? "text-[var(--color-wa-text-sec)]"
+    : bueno ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400";
+  return (
+    <p className="text-[11px] mt-1.5">
+      <span className={`font-semibold ${color}`}>
+        {pct === 0 ? "sin cambio" : `${sube ? "↑" : "↓"} ${Math.abs(pct)}%`}
+      </span>
+      <span className="text-[var(--color-wa-text-sec)]"> vs período anterior</span>
+    </p>
+  );
+}
+
+function Kpi({ label, value, iconHex, icon, children }: {
+  label: string; value: string | number; iconHex: string;
+  icon: React.ReactNode; children?: React.ReactNode;
 }) {
   return (
     <div className="bg-[var(--color-wa-panel-l)] rounded-2xl border border-[var(--color-wa-sep)] p-4 flex flex-col gap-3">
       <div className="flex items-center gap-2.5">
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: `${iconHex}18`, color: iconHex }}
-        >
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${iconHex}18`, color: iconHex }}>
           {icon}
         </div>
         <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-wa-text-sec)] leading-tight">{label}</span>
       </div>
       <div>
         <p className="text-[26px] font-bold leading-none text-[var(--color-wa-text-main)]">{value}</p>
-        {sub && <p className="text-[11px] text-[var(--color-wa-text-sec)] mt-1.5">{sub}</p>}
+        {children}
       </div>
     </div>
   );
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
 function Sk({ className }: { className: string }) {
   return <div className={`bg-[var(--color-wa-panel-l)] border border-[var(--color-wa-sep)] rounded-2xl animate-pulse ${className}`} />;
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+const I = (d: string) => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+  </svg>
+);
+
+// ── Página ────────────────────────────────────────────────────────────────────
+
+const OPCIONES_RANGO: Array<{ id: PresetRango; label: string }> = [
+  { id: "dia", label: "Hoy" },
+  { id: "semana", label: "Esta semana" },
+  { id: "mes", label: "Este mes" },
+  { id: "custom", label: "Personalizado" },
+];
+
+/**
+ * `rangoDePreset` devuelve el período entero (lunes a domingo, mes completo).
+ * Acá se recorta a hoy: métricas de días que todavía no pasaron ensuciarían la
+ * comparación con el período anterior, que sí está cerrado.
+ *
+ * En Caja y Comisiones NO se recorta: ahí querés ver la semana o el mes
+ * completos, incluidos los turnos ya agendados.
+ */
+function rangoHastaHoy(p: PresetRango) {
+  const hoy = hoyAR();
+  const r = rangoDePreset(p, hoy);
+  return { desde: r.desde, hasta: r.hasta > hoy ? hoy : r.hasta };
+}
+
+// ── Componente ────────────────────────────────────────────────────────────────────
+
 export default function MetricsPage() {
   const [data, setData] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [preset, setPreset] = useState<PresetRango>("mes");
+  const [rango, setRango] = useState(() => rangoHastaHoy("mes"));
 
-  const load = useCallback(() => {
+  const load = useCallback((desde: string, hasta: string) => {
     setLoading(true);
     setError(false);
-    fetch("/api/metrics")
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
+    fetch(`/api/metrics?desde=${desde}&hasta=${hasta}`)
+      .then((r) => r.json())
+      .then((d) => { setData(d); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(rango.desde, rango.hasta); }, [load, rango]);
 
-  const apptTotal = data
-    ? data.appointments.pending + data.appointments.confirmed + data.appointments.cancelled
+  const elegirPreset = (p: PresetRango) => {
+    setPreset(p);
+    // "Personalizado" arranca con el rango que ya estaba a la vista, para no
+    // vaciar la pantalla mientras se eligen las dos fechas.
+    if (p !== "custom") setRango(rangoHastaHoy(p));
+  };
+
+  const totalEstados = data
+    ? data.estados.confirmada + data.estados.atendida + data.estados.cancelada + data.estados.no_show
     : 0;
-  const originTotal = data ? data.appointments.fromBot + data.appointments.fromManual : 0;
+  // Las ausencias son cancelaciones: un solo renglón, como en toda la app.
+  const cancelados = data ? data.estados.cancelada + data.estados.no_show : 0;
+  const totalOrigen = data ? data.origen.web + data.origen.manual + data.origen.bot : 0;
+
+  // "Bot" solo se muestra si alguna vez entró un turno por ahí: en Corte Inglés
+  // el bot está apagado y una fila fija en cero es ruido.
+  const origenFilas = data
+    ? [
+        { etiqueta: "Web", detalle: "desde la landing", valor: data.origen.web, hex: "#60a5fa" },
+        { etiqueta: "Panel", detalle: "cargados a mano", valor: data.origen.manual, hex: "#a78bfa" },
+        ...(data.origen.bot > 0
+          ? [{ etiqueta: "Bot", detalle: "por WhatsApp", valor: data.origen.bot, hex: "#25d366" }]
+          : []),
+      ]
+    : [];
+
+  const franjaTop = data && data.porFranja.length
+    ? data.porFranja.reduce((a, b) => (b.count > a.count ? b : a))
+    : null;
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        <div className="max-w-6xl mx-auto space-y-4">
+        <div className="max-w-[1800px] mx-auto space-y-4">
 
-          {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="text-xl font-bold text-[var(--color-wa-text-main)]">Métricas</h1>
-              <p className="text-xs text-[var(--color-wa-text-sec)] mt-0.5">Rendimiento del asistente y actividad del negocio</p>
+              <p className="text-xs text-[var(--color-wa-text-sec)] mt-0.5">
+                {data
+                  ? `${fmtLargo(data.rango.desde)} — ${fmtLargo(data.rango.hasta)} · ${data.rango.dias} día${data.rango.dias !== 1 ? "s" : ""}, contra ${fmtLargo(data.rangoAnterior.desde)} — ${fmtLargo(data.rangoAnterior.hasta)}`
+                  : "Actividad del negocio"}
+              </p>
             </div>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="p-2 rounded-xl text-[var(--color-wa-text-sec)] hover:text-[var(--color-wa-text-main)] hover:bg-[var(--color-wa-hover)] disabled:opacity-40 transition-colors"
-              title="Actualizar"
-            >
-              <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+            <SelectorRango
+              preset={preset}
+              opciones={OPCIONES_RANGO}
+              desde={rango.desde}
+              hasta={rango.hasta}
+              onPreset={elegirPreset}
+              onCustom={(d, h) => setRango({ desde: d, hasta: h })}
+            />
           </div>
 
           {error && (
-            <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
-              Error al cargar las métricas. Intentá recargar.
-            </div>
+            <p className="text-sm rounded-xl px-3 py-2 border border-[var(--color-wa-error)] text-[var(--color-wa-error)]">
+              No se pudieron cargar las métricas.
+            </p>
           )}
 
-          {/* KPI Cards */}
+          {/* KPIs */}
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-              {Array.from({ length: 6 }).map((_, i) => <Sk key={i} className="h-28" />)}
+              {Array.from({ length: 6 }).map((_, i) => <Sk key={i} className="h-32" />)}
             </div>
           ) : data && (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <Kpi label="Turnos" value={data.turnos.valor.toLocaleString("es-AR")} iconHex="#8b5cf6"
+                icon={I("M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z")}>
+                <Delta valor={data.turnos.valor} anterior={data.turnos.anterior} />
+              </Kpi>
+
+              <Kpi label="Facturación" value={plata(data.facturacion.valor)} iconHex="#16a34a"
+                icon={I("M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1")}>
+                <Delta valor={data.facturacion.valor} anterior={data.facturacion.anterior} />
+              </Kpi>
+
+              <Kpi label="Ticket promedio" value={plata(data.ticketPromedio.valor)} iconHex="#0ea5e9"
+                icon={I("M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z")}>
+                <Delta valor={data.ticketPromedio.valor} anterior={data.ticketPromedio.anterior} />
+              </Kpi>
+
               <Kpi
-                label="Contactos"
-                value={data.contacts.total.toLocaleString("es-AR")}
-                sub={`+${data.contacts.thisWeek} esta semana`}
-                iconHex="#3b82f6"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
-              />
-              <Kpi
-                label="Mensajes IA"
-                value={data.messages.ai.toLocaleString("es-AR")}
-                sub={`de ${data.messages.total.toLocaleString("es-AR")} totales`}
-                iconHex="#25d366"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>}
-              />
-              <Kpi
-                label="Turnos totales"
-                value={data.appointments.total.toLocaleString("es-AR")}
-                sub={`${data.appointments.thisMonth} este mes`}
-                iconHex="#8b5cf6"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
-              />
-              <Kpi
-                label="Conversión"
-                value={`${data.conversion.rate}%`}
-                sub={`${data.conversion.contactsWithAppts} con turno`}
-                iconHex="#f59e0b"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
-              />
-              <Kpi
-                label="Próximos"
-                value={data.appointments.pending}
-                sub="turnos pendientes"
-                iconHex="#06b6d4"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-              />
-              <Kpi
-                label="Atención manual"
-                value={data.messages.humanInterventions}
-                sub="chats tomados por humano"
+                label="Turnos perdidos"
+                value={`${totalEstados > 0 ? Math.round((data.perdidos.valor / totalEstados) * 100) : 0}%`}
                 iconHex="#ef4444"
-                icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>}
-              />
+                icon={I("M12 9v2m0 4h.01M5.07 19H19a2 2 0 001.75-2.97l-6.93-12a2 2 0 00-3.5 0l-6.93 12A2 2 0 005.07 19z")}
+              >
+                <p className="text-[11px] text-[var(--color-wa-text-sec)] mt-1.5">
+                  {data.perdidos.valor} cancelado{data.perdidos.valor !== 1 ? "s" : ""} o no vino
+                </p>
+                <Delta valor={data.perdidos.valor} anterior={data.perdidos.anterior} menosEsMejor />
+              </Kpi>
+
+              <Kpi label="Clientes nuevos" value={data.clientesNuevos.valor.toLocaleString("es-AR")} iconHex="#f59e0b"
+                icon={I("M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z")}>
+                <Delta valor={data.clientesNuevos.valor} anterior={data.clientesNuevos.anterior} />
+              </Kpi>
+
+              <Kpi label="Próximos" value={data.proximos.toLocaleString("es-AR")} iconHex="#06b6d4"
+                icon={I("M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z")}>
+                {/* Único que no responde al selector: es un stock, no un flujo. */}
+                <p className="text-[11px] text-[var(--color-wa-text-sec)] mt-1.5">
+                  confirmados de hoy en adelante<br />
+                  <span className="opacity-70">no depende del rango</span>
+                </p>
+              </Kpi>
             </div>
           )}
 
-          {/* Appointments chart */}
-          {loading ? (
-            <Sk className="h-36" />
-          ) : data && (
-            <Card title="Turnos agendados" sub="Últimos 30 días — cada barra es un día, hoy en verde sólido">
-              <DayBars data={data.appointmentsByDay} />
+          {/* Turnos por día */}
+          {loading ? <Sk className="h-40" /> : data && (
+            <Card title="Turnos por día" sub="Cada barra es un día del período; hoy en verde sólido">
+              <DayBars data={data.citasPorDia} desde={data.rango.desde} hasta={data.rango.hasta} />
             </Card>
           )}
 
-          {/* Messages + Services */}
+          {/* Tarjetas */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Sk className="h-52" />
-              <Sk className="h-52" />
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => <Sk key={i} className="h-52" />)}
             </div>
           ) : data && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card title="Actividad de mensajes" sub="Últimos 14 días">
-                <MessageAreaChart data={data.messagesByDay} />
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+
+              <Card title="Por profesional" sub="Turnos del período y lo facturado de los atendidos">
+                <Barras
+                  vacio="Sin turnos en este período"
+                  filas={data.porProfesional.map((p) => ({
+                    etiqueta: p.profesional,
+                    valor: p.turnos,
+                    detalle: `${p.turnos} · ${plata(p.facturacion)}`,
+                  }))}
+                />
               </Card>
+
+              <Card
+                title="Franja horaria"
+                sub={franjaTop ? `La hora más pedida es a las ${String(franjaTop.hora).padStart(2, "0")}:00` : undefined}
+              >
+                <Barras
+                  vacio="Sin turnos en este período"
+                  filas={data.porFranja.map((f) => ({
+                    etiqueta: `${String(f.hora).padStart(2, "0")}:00`,
+                    valor: f.count,
+                    detalle: `${f.count} turno${f.count !== 1 ? "s" : ""}`,
+                  }))}
+                />
+              </Card>
+
               <Card title="Servicios más solicitados">
-                <ServiceBars services={data.topServices} />
+                <Barras
+                  vacio="Sin servicios registrados en turnos"
+                  filas={data.topServicios.map((s) => ({
+                    etiqueta: s.servicio,
+                    valor: s.count,
+                    detalle: `${s.count} turno${s.count !== 1 ? "s" : ""}`,
+                  }))}
+                />
               </Card>
-            </div>
-          )}
 
-          {/* Status + Origin */}
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Sk className="h-44" />
-              <Sk className="h-44" />
-            </div>
-          ) : data && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card title="Estado de turnos">
-                {apptTotal === 0 ? (
-                  <p className="text-sm text-[var(--color-wa-text-sec)]">Sin turnos registrados</p>
+                {totalEstados === 0 ? (
+                  <p className="text-sm text-[var(--color-wa-text-sec)]">Sin turnos en este período</p>
                 ) : (
                   <div className="flex flex-col gap-4">
-                    <StatusRow label="Pendientes" count={data.appointments.pending} total={apptTotal} hex="#f59e0b" />
-                    <StatusRow label="Confirmados" count={data.appointments.confirmed} total={apptTotal} hex="#25d366" />
-                    <StatusRow label="Cancelados" count={data.appointments.cancelled} total={apptTotal} hex="#f87171" />
-                    <div className="pt-3 border-t border-[var(--color-wa-sep)] flex justify-between text-xs text-[var(--color-wa-text-sec)]">
-                      <span>Total registrados: <strong className="text-[var(--color-wa-text-main)]">{apptTotal}</strong></span>
-                      <span>
-                        Cancelación:{" "}
-                        <strong className="text-[var(--color-wa-text-main)]">
-                          {apptTotal > 0 ? Math.round((data.appointments.cancelled / apptTotal) * 100) : 0}%
-                        </strong>
-                      </span>
+                    <StatusRow label="Confirmados" count={data.estados.confirmada} total={totalEstados} hex={COLOR_ESTADO.confirmada} />
+                    <StatusRow label="Atendidos" count={data.estados.atendida} total={totalEstados} hex={COLOR_ESTADO.atendida} />
+                    {/* Un solo renglón para los dos motivos: son el mismo
+                        estado a nivel producto. El desglose va abajo, en
+                        chico, porque el motivo sí se cuenta por separado. */}
+                    <StatusRow label="Cancelados" count={cancelados} total={totalEstados} hex={COLOR_ESTADO.cancelada} />
+                    {cancelados > 0 && (
+                      <div className="flex flex-col gap-1 -mt-1 pl-5 text-xs text-[var(--color-wa-text-sec)]">
+                        <div className="flex justify-between">
+                          <span>Cancelaron el turno</span>
+                          <span className="tnum font-semibold">{data.estados.cancelada}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>No vinieron</span>
+                          <span className="tnum font-semibold">{data.estados.no_show}</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-3 border-t border-[var(--color-wa-sep)] text-xs text-[var(--color-wa-text-sec)]">
+                      Total del período: <strong className="text-[var(--color-wa-text-main)]">{totalEstados}</strong>
                     </div>
                   </div>
                 )}
               </Card>
 
-              <Card title="Origen de turnos">
-                {originTotal === 0 ? (
-                  <p className="text-sm text-[var(--color-wa-text-sec)]">Sin turnos registrados</p>
+              <Card title="Origen de turnos" sub="De dónde entró cada reserva">
+                {totalOrigen === 0 ? (
+                  <p className="text-sm text-[var(--color-wa-text-sec)]">Sin turnos en este período</p>
                 ) : (
                   <div className="flex flex-col gap-4">
-                    {/* Split bar */}
+                    {/* Cada segmento con su propio ancho. Antes se dibujaba el
+                        del bot y el resto con flex-1, así que un turno entrado
+                        por la web se pintaba dentro de "manual". */}
                     <div className="h-3 rounded-full overflow-hidden flex">
-                      <div
-                        className="transition-all duration-700"
-                        style={{
-                          width: `${(data.appointments.fromBot / originTotal) * 100}%`,
-                          background: "#25d366",
-                        }}
-                      />
-                      <div className="flex-1" style={{ background: "#60a5fa" }} />
+                      {origenFilas.filter((f) => f.valor > 0).map((f) => (
+                        <div key={f.etiqueta} className="transition-all duration-700"
+                          style={{ width: `${(f.valor / totalOrigen) * 100}%`, background: f.hex }} />
+                      ))}
                     </div>
-                    {/* Legend */}
                     <div className="flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: "#25d366" }} />
-                          <span className="text-sm text-[var(--color-wa-text-main)]">Agendados por el bot</span>
+                      {origenFilas.map((f) => (
+                        <div key={f.etiqueta} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: f.hex }} />
+                            <span className="text-sm text-[var(--color-wa-text-main)]">{f.etiqueta}</span>
+                            <span className="text-xs text-[var(--color-wa-text-sec)]">{f.detalle}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-[var(--color-wa-text-main)]">{f.valor}</span>
+                            <span className="text-xs text-[var(--color-wa-text-sec)] ml-1.5">
+                              ({Math.round((f.valor / totalOrigen) * 100)}%)
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-[var(--color-wa-text-main)]">{data.appointments.fromBot}</span>
-                          <span className="text-xs text-[var(--color-wa-text-sec)] ml-1.5">
-                            ({Math.round((data.appointments.fromBot / originTotal) * 100)}%)
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-sm" style={{ background: "#60a5fa" }} />
-                          <span className="text-sm text-[var(--color-wa-text-main)]">Agendados manualmente</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-[var(--color-wa-text-main)]">{data.appointments.fromManual}</span>
-                          <span className="text-xs text-[var(--color-wa-text-sec)] ml-1.5">
-                            ({Math.round((data.appointments.fromManual / originTotal) * 100)}%)
-                          </span>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                    <p className="text-xs text-[var(--color-wa-text-sec)] pt-2 border-t border-[var(--color-wa-sep)]">
-                      El bot automatizó el{" "}
-                      <strong className="text-[var(--color-wa-text-main)]">
-                        {Math.round((data.appointments.fromBot / originTotal) * 100)}%
-                      </strong>{" "}
-                      de los turnos
-                    </p>
                   </div>
                 )}
               </Card>
+
             </div>
           )}
 
-          {/* Footer note */}
           {!loading && data && (
             <p className="text-[11px] text-[var(--color-wa-text-sec)] text-center pb-2">
-              Datos en tiempo real desde la base de datos local · Actualizado al abrir esta sección
+              Datos en tiempo real desde la base · Actualizado al abrir esta sección
             </p>
           )}
 
