@@ -1,19 +1,19 @@
-// 014_studiobandito/07_panel_v2_014 — client.config.ts
+// 014_studiobandito/05_automatizacion_014 — client.config.ts
 // El único archivo que cambia por deployment, siguiendo la convención de Feer.
 //
 // Este panel nace de clonar el código de 999_corteingles (panel admin/CRM,
-// Paso 3 de la migración de schema). Los datos reales de Studio Bandito
-// (283 turnos, 257 clientes) ya están en data/bandito-migrado.db — este
-// archivo es branding y configuración, no datos.
+// Paso 3 de la migración de schema), mergeado a main el 2026-09-06 en
+// reemplazo del panel viejo. Los 283 turnos y 257 clientes reales de Studio
+// Bandito ya están migrados y sembrados en producción.
 
 export const clientConfig = {
   id: "studiobandito",
   nombre: "Studio Bandito",
   rubro: "barberia",
-  // No es un "demo" de venta (esDemo de Corte): son datos reales migrados.
-  // El aviso en el Sidebar dice "Vista previa", no "Demo", para no dar a
-  // entender que la información es de prueba.
-  vistaPrevia: true,
+  // false: esto es el panel real en producción, no una vista previa de
+  // prueba (ese uso quedó en 07_panel_v2_014 mientras existió como rama
+  // separada). No es tampoco un "demo" de venta (esDemo de Corte).
+  vistaPrevia: false,
 
   // El mismo numero que ya quedó en settings.phone / negocio.whatsapp al
   // migrar (2646230305). El panel VIEJO de Bandito tiene cargado un numero
