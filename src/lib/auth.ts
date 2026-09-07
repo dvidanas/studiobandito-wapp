@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { NextRequest } from "next/server";
 
 export const COOKIE_NAME = "session";
 export const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 días
@@ -36,4 +37,17 @@ export function verifySessionCookie(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * ¿Hay una sesión de staff válida en este request? Los endpoints públicos
+ * (/api/publico/*, el puente de compatibilidad de la landing vieja) siguen
+ * siendo alcanzables sin sesión, pero si alguien los usa logueado (staff
+ * probando la landing, por ejemplo) hay que tratarlo como carga manual, no
+ * como reserva de un desconocido — mismo criterio que `usuario` en
+ * 034_pastalovers/04_dashboard_900/src/app/api/reservas/route.ts.
+ */
+export function hasValidSession(req: NextRequest): boolean {
+  const cookie = req.cookies.get(COOKIE_NAME)?.value;
+  return !!cookie && verifySessionCookie(cookie);
 }

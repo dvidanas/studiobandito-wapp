@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { Select } from "@/components/panel/PanelChrome";
 
 interface Lead {
   id: number;
@@ -354,15 +355,15 @@ export default function LeadsPage() {
                   </p>
                 </div>
               </div>
-              <select
+              <Select
                 value={selectedLead.status}
                 onChange={(e) => changeStatus(selectedLead.id, e.target.value as Lead["status"])}
-                className={`text-sm font-semibold px-3 py-1.5 rounded-lg border-0 cursor-pointer outline-none flex-shrink-0 ${STATUS_STYLES[selectedLead.status]}`}
+                className={`text-sm font-semibold pl-3 py-1.5 rounded-lg border-0 cursor-pointer outline-none flex-shrink-0 ${STATUS_STYLES[selectedLead.status]}`}
               >
                 {(Object.keys(STATUS_LABELS) as Lead["status"][]).map((s) => (
                   <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* RESUMEN IA */}

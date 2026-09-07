@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createCita } from "@/lib/db";
+import { hasValidSession } from "@/lib/auth";
+import { normalizarTelefonoAR, ERROR_TELEFONO_INVALIDO } from "@/lib/telefono";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +11,7 @@ export const dynamic = "force-dynamic";
  * que no se solape con otra cita— dentro de una transacción. Lo que llegue en
  * el body es una intención, no un hecho.
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Body inválido." }, { status: 400 });
 
@@ -25,6 +27,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Necesitamos tu nombre para agendar el turno." }, { status: 400 });
   }
 
+  // El teléfono es el único canal para confirmar la reserva, así que el
+  // público no puede mandar cualquier texto. El staff cargando a mano (mismo
+  // endpoint, sesión logueada) sigue sin esta restricción — mismo criterio
+  // que 034_pastalovers. Si igual limpia a un AR válido, se usa la versión
+  // limpia para no generar una ficha de cliente duplicada sin necesidad.
+  const staff = hasValidSession(req);
+  const telefonoLimpio = normalizarTelefonoAR(telefono ?? "");
+  if (!staff && !telefonoLimpio) {
+    return NextResponse.json({ error: ERROR_TELEFONO_INVALIDO }, { status: 400 });
+  }
+  const telefonoGuardado = telefonoLimpio ?? (telefono?.trim() || null);
+
   const resultado = createCita({
     servicio_id: Number(servicio_id),
     profesional_id: Number(profesional_id),
@@ -32,7 +46,7 @@ export async function POST(req: Request) {
     fecha,
     hora_inicio,
     cliente_nombre: nombre.trim(),
-    cliente_telefono: telefono?.trim() || null,
+    cliente_telefono: telefonoGuardado,
     codigo_descuento: body.codigo_descuento?.trim() || null,
     notas: body.notas?.trim() || null,
     origen: "web",

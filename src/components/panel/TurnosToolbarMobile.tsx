@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { COLOR_ESTADO, hayFiltroActivo, type FiltroEstado, type Resource } from "./types";
+import { Select } from "./PanelChrome";
 
 /**
  * La misma información que `TurnosToolbar`, para el celular.
@@ -179,12 +180,13 @@ export function TurnosToolbarMobile({
           {/* Con un solo profesional activo el filtro no aporta nada — ver
               el mismo criterio en TurnosToolbar (desktop). */}
           {profesionales.length > 1 && (
-            <select
+            <Select
               value={String(profesionalFilter)}
               onChange={(e) =>
                 onProfesionalFilterChange(e.target.value === "todos" ? "todos" : Number(e.target.value))
               }
               className={claseSelect}
+              wrapperClassName="w-full"
               aria-label="Filtrar por profesional"
             >
               <option value="todos">Todos los barberos</option>
@@ -193,15 +195,16 @@ export function TurnosToolbarMobile({
                   {p.nombre}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
 
           {/* "Cancelados" agrupa los dos motivos; el optgroup deja filtrar por
               uno solo, que es para lo que sirve guardar el motivo. */}
-          <select
+          <Select
             value={statusFilter}
             onChange={(e) => onStatusFilterChange(e.target.value as FiltroEstado)}
             className={claseSelect}
+            wrapperClassName="w-full"
             aria-label="Filtrar por estado"
           >
             <option value="todos">Todos los estados</option>
@@ -213,7 +216,7 @@ export function TurnosToolbarMobile({
               <option value="cancelada">Canceló el turno</option>
               <option value="no_show">No vino</option>
             </optgroup>
-          </select>
+          </Select>
         </div>
       )}
     </div>

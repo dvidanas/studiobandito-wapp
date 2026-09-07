@@ -23,6 +23,7 @@ import {
   SelectorRango,
   Aviso,
   Vacio,
+  Select,
 } from "@/components/panel/PanelChrome";
 import { plata, hoyISO } from "@/lib/format";
 import { rangoDePreset, moverRango, type PresetRango } from "@/lib/panelDates";
@@ -460,7 +461,7 @@ export default function ComisionesPage() {
 
                   {editando === c.profesional_id ? (
                     <>
-                      <select
+                      <Select
                         value={borrador.tipo}
                         onChange={(e) =>
                           setBorrador({
@@ -472,7 +473,7 @@ export default function ComisionesPage() {
                       >
                         <option value="porcentaje">Porcentaje</option>
                         <option value="monto_fijo">Monto fijo por cita</option>
-                      </select>
+                      </Select>
                       <input
                         type="number"
                         min="0"

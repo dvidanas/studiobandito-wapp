@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listProfesionales, listServicios, createCita } from "@/lib/db";
+import { hasValidSession } from "@/lib/auth";
+import { normalizarTelefonoAR, ERROR_TELEFONO_INVALIDO } from "@/lib/telefono";
 
 export const dynamic = "force-dynamic";
 
@@ -46,13 +48,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Mismo criterio que /api/publico/reservar y 034_pastalovers: el público
+  // no puede mandar cualquier texto como teléfono, el staff logueado sí (usa
+  // este mismo puente para probar la landing, por ejemplo).
+  const staff = hasValidSession(req);
+  const telefonoLimpio = normalizarTelefonoAR(contact_phone as string);
+  if (!staff && !telefonoLimpio) {
+    return NextResponse.json({ error: ERROR_TELEFONO_INVALIDO }, { status: 400 });
+  }
+
   const resultado = createCita({
     profesional_id: activos[0].id,
     servicio_id: servicio.id,
     fecha: date as string,
     hora_inicio: time_start as string,
     cliente_nombre: contact_name as string,
-    cliente_telefono: contact_phone as string,
+    cliente_telefono: telefonoLimpio ?? (contact_phone as string),
     origen: "web",
   });
 

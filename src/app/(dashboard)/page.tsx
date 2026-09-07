@@ -22,7 +22,7 @@ import {
   type Servicio,
   type Stats,
 } from "@/components/panel/types";
-import { claseInput, claseArea } from "@/components/panel/PanelChrome";
+import { claseInput, claseArea, Select } from "@/components/panel/PanelChrome";
 import { plata } from "@/lib/format";
 
 
@@ -586,13 +586,14 @@ function AppointmentsView() {
                   filtra qué profesionales pueden tomarlo. */}
               <div>
                 <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Servicio</label>
-                <select
+                <Select
                   value={modalServicio}
                   onChange={(e) => {
                     setModalServicio(Number(e.target.value));
                     setModalSlot("");
                   }}
-                  className={`${claseInput} w-full`}
+                  className={claseInput}
+                  wrapperClassName="w-full"
                 >
                   <option value={0}>Elegí un servicio…</option>
                   {servicios.map((sv) => (
@@ -600,24 +601,25 @@ function AppointmentsView() {
                       {sv.nombre} — {sv.duracion_min} min — {plata(sv.precio)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-[var(--color-wa-text-sec)] mb-1">Profesional</label>
-                <select
+                <Select
                   value={modalResource}
                   onChange={(e) => {
                     setModalResource(Number(e.target.value));
                     setModalSlot("");
                   }}
-                  className={`${claseInput} w-full`}
+                  className={claseInput}
+                  wrapperClassName="w-full"
                 >
                   <option value={0}>Elegí un profesional…</option>
                   {profesionalesDelServicio.map((r) => (
                     <option key={r.id} value={r.id}>{r.nombre}</option>
                   ))}
-                </select>
+                </Select>
                 {modalServicio > 0 && profesionalesDelServicio.length === 0 && (
                   <p className="text-xs mt-1" style={{ color: "var(--color-wa-alerta)" }}>
                     Ningún profesional activo hace ese servicio. Asignalo en Config → Personal.

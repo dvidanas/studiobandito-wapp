@@ -34,6 +34,7 @@ import {
   Aviso,
   Vacio,
   SelectorRango,
+  Select,
 } from "@/components/panel/PanelChrome";
 import { plata, hoyISO, fechaLarga } from "@/lib/format";
 import { rangoDePreset, moverRango, type PresetRango } from "@/lib/panelDates";
@@ -480,14 +481,14 @@ export default function CajaPage() {
               className="flex flex-wrap items-end gap-3 px-4 md:px-5 py-4 border-b border-[var(--color-wa-sep)]"
             >
               <Campo etiqueta="Tipo">
-                <select
+                <Select
                   value={tipo}
                   onChange={(e) => setTipo(e.target.value as "ingreso" | "egreso")}
                   className={claseInput}
                 >
                   <option value="egreso">Egreso</option>
                   <option value="ingreso">Ingreso</option>
-                </select>
+                </Select>
               </Campo>
               <Campo etiqueta="Concepto" ancho="flex-1 min-w-[180px]">
                 <input

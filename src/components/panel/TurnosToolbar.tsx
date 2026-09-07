@@ -1,6 +1,7 @@
 "use client";
 
 import { COLOR_ESTADO, type FiltroEstado, type Resource } from "./types";
+import { Select } from "./PanelChrome";
 
 const claseSelect =
   "bg-[var(--color-wa-input)] border border-[var(--color-wa-sep)] rounded-xl px-3 py-1.5 text-xs font-bold text-[var(--color-wa-text-main)] focus:outline-none focus:border-[var(--color-wa-green)] cursor-pointer";
@@ -196,7 +197,7 @@ export function TurnosToolbar({
             vez de mostrar una decisión que no existe. Vuelve solo cuando
             haya más de un profesional activo, sin tocar código. */}
         {profesionales.length > 1 && (
-          <select
+          <Select
             value={String(profesionalFilter)}
             onChange={(e) =>
               onProfesionalFilterChange(e.target.value === "todos" ? "todos" : Number(e.target.value))
@@ -210,12 +211,12 @@ export function TurnosToolbar({
                 {p.nombre}
               </option>
             ))}
-          </select>
+          </Select>
         )}
 
         {/* "Cancelados" agrupa los dos motivos; el optgroup deja filtrar por
             uno solo, que es para lo que sirve guardar el motivo. */}
-        <select
+        <Select
           value={statusFilter}
           onChange={(e) => onStatusFilterChange(e.target.value as FiltroEstado)}
           className={claseSelect}
@@ -232,7 +233,7 @@ export function TurnosToolbar({
             <option value="cancelada">Canceló el turno</option>
             <option value="no_show">No vino</option>
           </optgroup>
-        </select>
+        </Select>
       </div>
     </div>
   );

@@ -8,7 +8,7 @@
  * Cada pantalla nueva se cuelga de acá en vez de repetir el andamiaje.
  */
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type SelectHTMLAttributes } from "react";
 import type { PresetRango } from "@/lib/panelDates";
 
 export function PantallaPanel({
@@ -159,6 +159,45 @@ export function Campo({
       </span>
       {children}
     </label>
+  );
+}
+
+/**
+ * `<select>` nativo con el chevron separado del texto y del borde.
+ *
+ * El chevron nativo del navegador queda pegado al padding del campo — sin
+ * aire ni respecto al texto ni respecto al borde. `appearance-none` lo saca
+ * del medio y este SVG lo reemplaza con margen propio (`right-2.5`); `pr-8`
+ * en el select le da al texto lugar para no chocar contra el ícono.
+ *
+ * Recibe las mismas clases que ya usaba cada `<select>` (alto, tipografía,
+ * fondo) vía `className` — este componente solo se ocupa del chevron, no
+ * del tamaño. `wrapperClassName` es para el caso puntual donde el select
+ * necesita ocupar todo el ancho de su fila (ej. los filtros de Turnos en
+ * mobile): el layout de las demás pantallas no cambia porque nadie más lo
+ * pasa.
+ */
+export function Select({
+  className = "",
+  wrapperClassName = "",
+  children,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement> & { wrapperClassName?: string }) {
+  return (
+    <div className={`relative ${wrapperClassName}`}>
+      <svg
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--color-wa-text-sec)]"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2.5}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+      </svg>
+      <select {...props} className={`appearance-none pr-8 ${className}`}>
+        {children}
+      </select>
+    </div>
   );
 }
 

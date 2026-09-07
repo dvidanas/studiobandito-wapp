@@ -23,6 +23,7 @@ import {
   campoFechaForm,
   Aviso,
   Vacio,
+  Select,
 } from "@/components/panel/PanelChrome";
 import { plata, hoyISO } from "@/lib/format";
 
@@ -183,14 +184,14 @@ export default function DescuentosPage() {
               />
             </Campo>
             <Campo etiqueta="Tipo">
-              <select
+              <Select
                 value={form.tipo}
                 onChange={(e) => setForm({ ...form, tipo: e.target.value as "porcentaje" | "monto" })}
                 className={claseInput}
               >
                 <option value="porcentaje">Porcentaje</option>
                 <option value="monto">Monto fijo</option>
-              </select>
+              </Select>
             </Campo>
             <Campo etiqueta={form.tipo === "porcentaje" ? "% de descuento" : "Monto a descontar"}>
               <input

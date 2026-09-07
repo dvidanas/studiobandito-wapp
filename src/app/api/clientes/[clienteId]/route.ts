@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getClienteById, getHistorialCliente, updateCliente } from "@/lib/db";
+import { normalizarTelefonoAR } from "@/lib/telefono";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ clienteI
 
   updateCliente(Number(clienteId), {
     ...(body.nombre !== undefined && { nombre: body.nombre.trim() }),
-    ...(body.telefono !== undefined && { telefono: body.telefono?.trim() || null }),
+    // Edición manual de staff: no se rechaza, pero se guarda limpio si el
+    // teléfono cargado ya es un AR válido — mismo criterio que /api/citas.
+    ...(body.telefono !== undefined && {
+      telefono: normalizarTelefonoAR(body.telefono ?? "") ?? (body.telefono?.trim() || null),
+    }),
     ...(body.email !== undefined && { email: body.email?.trim() || null }),
     ...(body.notas !== undefined && { notas: body.notas?.trim() || null }),
   });
