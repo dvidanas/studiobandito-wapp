@@ -2612,6 +2612,71 @@ export function deleteCliente(id: number): ResultadoBorrarCliente {
   return { ok: true };
 }
 
+interface MiembroDuplicado {
+  id: number;
+  nombre: string;
+  telefono: string | null;
+}
+
+/**
+ * Grupos de clientes que comparten nombre EXACTO y donde NINGUNO tiene
+ * teléfono cargado — los que coinciden por teléfono no se tocan. Ordenados
+ * por id ascendente dentro de cada grupo (el primero es quien va a quedar
+ * como principal). Recalculado contra la base viva en cada llamado, tanto
+ * para el dry-run como para la fusión real, así los dos ven siempre lo mismo.
+ */
+function detectarGruposDuplicadosSinTelefono(db: Database.Database): MiembroDuplicado[][] {
+  const clientes = db
+    .prepare<[], MiembroDuplicado>("SELECT id, nombre, telefono FROM clientes ORDER BY nombre, id")
+    .all();
+
+  const grupos = new Map<string, MiembroDuplicado[]>();
+  for (const c of clientes) {
+    const lista = grupos.get(c.nombre) ?? [];
+    lista.push(c);
+    grupos.set(c.nombre, lista);
+  }
+
+  return [...grupos.values()].filter(
+    (miembros) => miembros.length >= 2 && miembros.every((m) => !m.telefono || !m.telefono.trim())
+  );
+}
+
+export interface CandidatoFusionDuplicados {
+  nombre: string;
+  principalId: number;
+  otrosIds: number[];
+  turnosPorId: Record<number, number>;
+}
+
+/**
+ * Dry-run de mergeClientesDuplicadosSinTelefono(): solo lectura, no toca
+ * nada. Muestra los mismos grupos que fusionaría el POST, con la cantidad
+ * de turnos de cada miembro, para revisar antes de ejecutar.
+ */
+export function detectarDuplicadosSinTelefono(): CandidatoFusionDuplicados[] {
+  const db = getDb();
+  const grupos = detectarGruposDuplicadosSinTelefono(db);
+  const contarTurnos = db.prepare<number, { n: number }>(
+    "SELECT COUNT(*) as n FROM citas WHERE cliente_id = ?"
+  );
+
+  return grupos.map((miembros) => {
+    const ordenados = [...miembros].sort((a, b) => a.id - b.id);
+    const [principal, ...resto] = ordenados;
+    const turnosPorId: Record<number, number> = {};
+    for (const m of ordenados) {
+      turnosPorId[m.id] = contarTurnos.get(m.id)!.n;
+    }
+    return {
+      nombre: principal.nombre,
+      principalId: principal.id,
+      otrosIds: resto.map((m) => m.id),
+      turnosPorId,
+    };
+  });
+}
+
 export interface ResultadoFusionDuplicados {
   gruposFusionados: number;
   clientesEliminados: number;
@@ -2627,37 +2692,17 @@ export interface ResultadoFusionDuplicados {
  * Uso único post-migración (septiembre 2026): la migración desde el schema
  * viejo creó un cliente nuevo por cada turno histórico sin teléfono en vez
  * de reutilizar uno ya existente con el mismo nombre — de ahí decenas de
- * "duplicados" con 1 turno cada uno. Fusiona clientes que comparten nombre
- * EXACTO y donde NINGUNO tiene teléfono cargado; los que coinciden por
- * teléfono no se tocan. Se queda el id más bajo del grupo, reasigna los
- * turnos de los demás antes de borrarlos (no se pierde historial, igual que
- * deleteCliente()). Recalcula los grupos contra la base viva en el momento
- * de correr, no una lista fija — así no importa qué se haya cargado desde
- * el día de la migración.
+ * "duplicados" con 1 turno cada uno. Fusiona los grupos de
+ * detectarGruposDuplicadosSinTelefono(): se queda el id más bajo, reasigna
+ * los turnos de los demás antes de borrarlos (no se pierde historial, igual
+ * que deleteCliente()).
  */
 export function mergeClientesDuplicadosSinTelefono(): ResultadoFusionDuplicados {
   const db = getDb();
-  const clientes = db
-    .prepare<[], { id: number; nombre: string; telefono: string | null }>(
-      "SELECT id, nombre, telefono FROM clientes ORDER BY nombre, id"
-    )
-    .all();
-
-  const grupos = new Map<string, typeof clientes>();
-  for (const c of clientes) {
-    const lista = grupos.get(c.nombre) ?? [];
-    lista.push(c);
-    grupos.set(c.nombre, lista);
-  }
-
   const detalle: ResultadoFusionDuplicados["detalle"] = [];
 
   const ejecutar = db.transaction(() => {
-    for (const [nombre, miembros] of grupos) {
-      if (miembros.length < 2) continue;
-      const sinTelefono = miembros.every((m) => !m.telefono || !m.telefono.trim());
-      if (!sinTelefono) continue;
-
+    for (const miembros of detectarGruposDuplicadosSinTelefono(db)) {
       const [principal, ...resto] = [...miembros].sort((a, b) => a.id - b.id);
       let turnosReasignados = 0;
       for (const perdedor of resto) {
@@ -2668,7 +2713,7 @@ export function mergeClientesDuplicadosSinTelefono(): ResultadoFusionDuplicados 
         db.prepare("DELETE FROM clientes WHERE id = ?").run(perdedor.id);
       }
       detalle.push({
-        nombre,
+        nombre: principal.nombre,
         principalId: principal.id,
         fusionadosIds: resto.map((m) => m.id),
         turnosReasignados,
