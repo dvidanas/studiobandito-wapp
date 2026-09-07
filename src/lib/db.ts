@@ -2612,6 +2612,78 @@ export function deleteCliente(id: number): ResultadoBorrarCliente {
   return { ok: true };
 }
 
+export interface ResultadoFusionDuplicados {
+  gruposFusionados: number;
+  clientesEliminados: number;
+  detalle: Array<{
+    nombre: string;
+    principalId: number;
+    fusionadosIds: number[];
+    turnosReasignados: number;
+  }>;
+}
+
+/**
+ * Uso único post-migración (septiembre 2026): la migración desde el schema
+ * viejo creó un cliente nuevo por cada turno histórico sin teléfono en vez
+ * de reutilizar uno ya existente con el mismo nombre — de ahí decenas de
+ * "duplicados" con 1 turno cada uno. Fusiona clientes que comparten nombre
+ * EXACTO y donde NINGUNO tiene teléfono cargado; los que coinciden por
+ * teléfono no se tocan. Se queda el id más bajo del grupo, reasigna los
+ * turnos de los demás antes de borrarlos (no se pierde historial, igual que
+ * deleteCliente()). Recalcula los grupos contra la base viva en el momento
+ * de correr, no una lista fija — así no importa qué se haya cargado desde
+ * el día de la migración.
+ */
+export function mergeClientesDuplicadosSinTelefono(): ResultadoFusionDuplicados {
+  const db = getDb();
+  const clientes = db
+    .prepare<[], { id: number; nombre: string; telefono: string | null }>(
+      "SELECT id, nombre, telefono FROM clientes ORDER BY nombre, id"
+    )
+    .all();
+
+  const grupos = new Map<string, typeof clientes>();
+  for (const c of clientes) {
+    const lista = grupos.get(c.nombre) ?? [];
+    lista.push(c);
+    grupos.set(c.nombre, lista);
+  }
+
+  const detalle: ResultadoFusionDuplicados["detalle"] = [];
+
+  const ejecutar = db.transaction(() => {
+    for (const [nombre, miembros] of grupos) {
+      if (miembros.length < 2) continue;
+      const sinTelefono = miembros.every((m) => !m.telefono || !m.telefono.trim());
+      if (!sinTelefono) continue;
+
+      const [principal, ...resto] = [...miembros].sort((a, b) => a.id - b.id);
+      let turnosReasignados = 0;
+      for (const perdedor of resto) {
+        const r = db
+          .prepare("UPDATE citas SET cliente_id = ? WHERE cliente_id = ?")
+          .run(principal.id, perdedor.id);
+        turnosReasignados += r.changes;
+        db.prepare("DELETE FROM clientes WHERE id = ?").run(perdedor.id);
+      }
+      detalle.push({
+        nombre,
+        principalId: principal.id,
+        fusionadosIds: resto.map((m) => m.id),
+        turnosReasignados,
+      });
+    }
+  });
+  ejecutar();
+
+  return {
+    gruposFusionados: detalle.length,
+    clientesEliminados: detalle.reduce((acc, d) => acc + d.fusionadosIds.length, 0),
+    detalle,
+  };
+}
+
 // ── Caja por rango ──────────────────────────────────────────
 
 export interface DiaDeCaja {
