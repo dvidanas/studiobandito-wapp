@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getClienteById, getHistorialCliente, updateCliente } from "@/lib/db";
+import { getClienteById, getHistorialCliente, updateCliente, deleteCliente } from "@/lib/db";
 import { normalizarTelefonoAR } from "@/lib/telefono";
 
 export const dynamic = "force-dynamic";
@@ -26,5 +26,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ clienteI
     ...(body.email !== undefined && { email: body.email?.trim() || null }),
     ...(body.notas !== undefined && { notas: body.notas?.trim() || null }),
   });
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(_req: Request, { params }: { params: Promise<{ clienteId: string }> }) {
+  const { clienteId } = await params;
+  const resultado = deleteCliente(Number(clienteId));
+  // 409: tiene turnos cargados — el mensaje ya explica cuántos, ver deleteCliente().
+  if (!resultado.ok) return NextResponse.json({ error: resultado.error }, { status: 409 });
   return NextResponse.json({ ok: true });
 }

@@ -2,15 +2,20 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { Pagination, PAGE_SIZE } from "@/components/panel/Pagination";
-import { plata } from "@/lib/format";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Campo, Boton, claseInput } from "@/components/panel/PanelChrome";
 
 /**
  * Tabla plana de clientes. Las filas no son clickeables a propósito: no hay
- * panel de detalle, ni modal, ni página por cliente.
+ * panel de detalle, ni modal, ni página por cliente — solo lo que hace falta
+ * para ubicar a alguien y, si hace falta, corregir nombre/teléfono o borrarlo.
  *
  * Visitas, última visita, total gastado y ausencias se calculan en la misma
  * consulta que la lista, no con un pedido por cliente. Tampoco se guardan como
- * contadores en `clientes`: la fuente de verdad es `citas`.
+ * contadores en `clientes`: la fuente de verdad es `citas`. El listado solo
+ * muestra Nombre, Teléfono y Última visita — visitas/no vino/total gastado
+ * siguen viniendo en la respuesta de la API por si algún día vuelve un detalle,
+ * pero no se pintan acá.
  */
 
 interface Cliente {
@@ -20,26 +25,7 @@ interface Cliente {
   visitas: number;
   ultima_visita: string | null;
   total_gastado: number;
-  /** Veces que reservó y no se presentó. Sale de `citas`, no de un contador. */
   no_vino: number;
-}
-
-/**
- * Cuántas veces no vino. En cero es un guion —no un 0, que llena la columna de
- * ruido—; a partir de dos pasa a ámbar, que es cuando deja de ser un olvido y
- * empieza a ser un patrón.
- */
-function NoVino({ veces }: { veces: number }) {
-  if (veces === 0) return <span className="text-[var(--color-wa-text-sec)]">—</span>;
-  return (
-    <span
-      className="tabular-nums font-semibold"
-      style={{ color: veces >= 2 ? "var(--color-wa-alerta)" : "var(--color-wa-text-sec)" }}
-      title={`Reservó y no se presentó ${veces} ${veces === 1 ? "vez" : "veces"}`}
-    >
-      {veces}
-    </span>
-  );
 }
 
 /** "2026-08-20" → "20/08/2026". Compacto, que es lo que pide una columna. */
@@ -54,6 +40,15 @@ export default function ClientesPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+
+  const [editing, setEditing] = useState<Cliente | null>(null);
+  const [editNombre, setEditNombre] = useState("");
+  const [editTelefono, setEditTelefono] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const url = query ? `/api/clientes?q=${encodeURIComponent(query)}` : "/api/clientes";
@@ -82,6 +77,59 @@ export default function ClientesPage() {
     () => clients.slice((paginaActual - 1) * PAGE_SIZE, paginaActual * PAGE_SIZE),
     [clients, paginaActual]
   );
+
+  function openEdit(c: Cliente) {
+    setEditing(c);
+    setEditNombre(c.nombre);
+    setEditTelefono(c.telefono ?? "");
+    setEditError(null);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    if (!editNombre.trim()) {
+      setEditError("El nombre es obligatorio.");
+      return;
+    }
+    setSaving(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/clientes/${editing.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: editNombre.trim(), telefono: editTelefono.trim() || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEditError(data.error || "No se pudo guardar. Intentá nuevamente.");
+        return;
+      }
+      setClients((prev) =>
+        prev.map((c) =>
+          c.id === editing.id ? { ...c, nombre: editNombre.trim(), telefono: editTelefono.trim() || null } : c
+        )
+      );
+      setEditing(null);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const res = await fetch(`/api/clientes/${deleteTarget.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      // El cliente tiene turnos cargados: se avisa por qué no se borró, en
+      // vez de forzarlo — ver el comentario en deleteCliente() del panel.
+      setDeleteError(data.error || "No se pudo borrar. Intentá nuevamente.");
+      setDeleteTarget(null);
+      return;
+    }
+    setClients((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -122,15 +170,13 @@ export default function ClientesPage() {
                     en lugar de aplastar las columnas. */}
                 <div className="border border-[var(--color-wa-sep)] rounded-2xl overflow-hidden bg-[var(--color-wa-panel-l)]">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm min-w-[720px]">
+                    <table className="w-full text-sm min-w-[520px]">
                       <thead>
                         <tr className="border-b border-[var(--color-wa-sep)] text-left text-xs uppercase tracking-wider text-[var(--color-wa-text-sec)]">
                           <th className="px-4 py-3 font-semibold">Nombre</th>
                           <th className="px-4 py-3 font-semibold">Teléfono</th>
-                          <th className="px-4 py-3 font-semibold">Visitas</th>
-                          <th className="px-4 py-3 font-semibold">No vino</th>
                           <th className="px-4 py-3 font-semibold">Última visita</th>
-                          <th className="px-4 py-3 font-semibold text-right">Total gastado</th>
+                          <th className="px-4 py-3 font-semibold text-right">Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -138,13 +184,33 @@ export default function ClientesPage() {
                           <tr key={c.id} className="border-b border-[var(--color-wa-sep)] last:border-0">
                             <td className="px-4 py-3 font-medium text-[var(--color-wa-text-main)]">{c.nombre}</td>
                             <td className="px-4 py-3 text-[var(--color-wa-text-sec)] tabular-nums">{c.telefono ?? "—"}</td>
-                            <td className="px-4 py-3 text-[var(--color-wa-text-main)] tabular-nums">{c.visitas}</td>
-                            <td className="px-4 py-3"><NoVino veces={c.no_vino} /></td>
                             <td className="px-4 py-3 text-[var(--color-wa-text-sec)] tabular-nums">
                               {formatVisita(c.ultima_visita)}
                             </td>
-                            <td className="px-4 py-3 text-[var(--color-wa-text-main)] tabular-nums text-right">
-                              {plata(c.total_gastado)}
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  onClick={() => openEdit(c)}
+                                  className="p-2 rounded-full hover:bg-[var(--color-wa-hover)] active:scale-90 transition-all cursor-pointer text-[var(--color-wa-text-sec)]"
+                                  title="Editar cliente"
+                                  aria-label="Editar cliente"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => setDeleteTarget(c)}
+                                  className="p-2 rounded-full hover:bg-[var(--color-wa-hover)] active:scale-90 transition-all cursor-pointer"
+                                  style={{ color: "var(--color-wa-error)" }}
+                                  title="Borrar cliente"
+                                  aria-label="Borrar cliente"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -159,6 +225,72 @@ export default function ClientesPage() {
           </div>
         </div>
       </PullToRefresh>
+
+      {editing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => !saving && setEditing(null)}
+        >
+          <form
+            onSubmit={saveEdit}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[var(--color-wa-panel-l)] rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full space-y-4"
+          >
+            <h2 className="text-base font-bold text-[var(--color-wa-text-main)]">Editar cliente</h2>
+            <Campo etiqueta="Nombre">
+              <input
+                value={editNombre}
+                onChange={(e) => setEditNombre(e.target.value)}
+                className={`${claseInput} w-full`}
+                autoFocus
+              />
+            </Campo>
+            <Campo etiqueta="Teléfono">
+              <input
+                type="tel"
+                value={editTelefono}
+                onChange={(e) => setEditTelefono(e.target.value)}
+                placeholder="2645551234"
+                className={`${claseInput} w-full`}
+              />
+            </Campo>
+            {editError && <p className="text-xs" style={{ color: "var(--color-wa-error)" }}>{editError}</p>}
+            <div className="flex gap-2 justify-end pt-1">
+              <Boton tipo="secundario" onClick={() => setEditing(null)} disabled={saving}>
+                Cancelar
+              </Boton>
+              <Boton submit disabled={saving}>
+                {saving ? "Guardando…" : "Guardar"}
+              </Boton>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmDialog
+          message={`¿Borrar a ${deleteTarget.nombre}? Esta acción no se puede deshacer.`}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {deleteError && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setDeleteError(null)}
+        >
+          <div
+            className="bg-[var(--color-wa-panel-l)] rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[var(--color-wa-text-main)] text-sm font-medium mb-5">{deleteError}</p>
+            <div className="flex justify-end">
+              <Boton onClick={() => setDeleteError(null)}>Entendido</Boton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

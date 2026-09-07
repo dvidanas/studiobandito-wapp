@@ -2586,6 +2586,32 @@ export function updateCliente(
   getDb().prepare(`UPDATE clientes SET ${campos.join(", ")} WHERE id = ?`).run(...valores);
 }
 
+export type ResultadoBorrarCliente =
+  | { ok: true }
+  | { ok: false; error: string; turnos: number };
+
+/**
+ * Un cliente con turnos cargados (de cualquier estado, cancelados incluidos)
+ * no se borra: perdería ese historial en silencio. No hay `force`/override
+ * acá a propósito — si hace falta borrar uno igual, es una decisión puntual
+ * que se toma caso por caso directo en la base, no un botón del panel.
+ */
+export function deleteCliente(id: number): ResultadoBorrarCliente {
+  const db = getDb();
+  const { n } = db
+    .prepare<number, { n: number }>("SELECT COUNT(*) as n FROM citas WHERE cliente_id = ?")
+    .get(id)!;
+  if (n > 0) {
+    return {
+      ok: false,
+      error: `Este cliente tiene ${n} turno${n === 1 ? "" : "s"} cargado${n === 1 ? "" : "s"}. Borrarlo perdería ese historial.`,
+      turnos: n,
+    };
+  }
+  db.prepare("DELETE FROM clientes WHERE id = ?").run(id);
+  return { ok: true };
+}
+
 // ── Caja por rango ──────────────────────────────────────────
 
 export interface DiaDeCaja {
